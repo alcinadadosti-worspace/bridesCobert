@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Create BRIDES purchase decision assistant\n\n- React + Vite + Tailwind CSS setup for static site deployment\n- Stripe-inspired UI with mesh gradient backgrounds and glassmorphism\n- Drag & drop file upload for Excel/CSV spreadsheets\n- Automatic column detection and data parsing with xlsx library\n- Purchase decision engine based on projected vs target coverage\n- Dashboard with summary cards, urgency distribution, and data table\n- Table features: search, filters, sorting, pagination\n- CSV export functionality\n- Framer Motion animations throughout\n- Fully responsive design\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
