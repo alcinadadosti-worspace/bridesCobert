@@ -61,7 +61,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
     >
       {/* Header */}
       <header className="sticky top-0 z-50 glass-dark border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="w-full px-4 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <motion.div
@@ -73,7 +73,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
                 <Sparkles className="w-5 h-5 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-xl font-bold text-white">BRIDES Dashboard</h1>
+                <h1 className="text-xl font-bold text-white">Coverage Dashboard</h1>
                 <p className="text-sm text-gray-400">Análise de Decisão de Compras</p>
               </div>
             </div>
@@ -123,7 +123,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="w-full px-4 lg:px-8 py-8">
         {/* File info badge */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -192,7 +192,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
 
       {/* Footer */}
       <footer className="border-t border-white/5 mt-12">
-        <div className="max-w-7xl mx-auto px-6 py-6 text-center text-sm text-gray-500">
+        <div className="w-full px-4 lg:px-8 py-6 text-center text-sm text-gray-500">
           Processamento 100% local. Seus dados nunca saem do navegador.
         </div>
       </footer>

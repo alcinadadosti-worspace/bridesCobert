@@ -48,7 +48,7 @@ function StatusBadge({ status, urgency }) {
       bg: 'bg-emerald-500/20',
       border: 'border-emerald-500/30',
       text: 'text-emerald-400',
-      label: 'Saudável',
+      label: 'OK',
     },
   }
 
@@ -60,14 +60,14 @@ function StatusBadge({ status, urgency }) {
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       className={`
-        inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+        inline-flex items-center gap-1 px-2 py-1 rounded-full
         ${config.bg} ${config.border} border
         transition-all duration-200
       `}
     >
-      <Icon className={`w-3.5 h-3.5 ${config.text}`} />
-      <span className={`text-xs font-medium ${config.text}`}>
-        {needsToBuy ? `Comprar (${config.label})` : config.label}
+      <Icon className={`w-3 h-3 ${config.text}`} />
+      <span className={`text-xs font-medium ${config.text} whitespace-nowrap`}>
+        {needsToBuy ? config.label : 'OK'}
       </span>
     </motion.div>
   )
@@ -84,7 +84,6 @@ function DataTable({ items, targetCoverage }) {
   const filteredItems = useMemo(() => {
     let result = [...items]
 
-    // Filtro de busca
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       result = result.filter(
@@ -95,7 +94,6 @@ function DataTable({ items, targetCoverage }) {
       )
     }
 
-    // Filtro de status
     if (filterStatus !== 'all') {
       result = result.filter((item) =>
         filterStatus === 'buy' ? item.needsToBuy : !item.needsToBuy
@@ -141,26 +139,14 @@ function DataTable({ items, targetCoverage }) {
 
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) {
-      return <ArrowUpDown className="w-4 h-4 text-gray-500" />
+      return <ArrowUpDown className="w-3 h-3 text-gray-500" />
     }
     return sortConfig.direction === 'asc' ? (
-      <ArrowUp className="w-4 h-4 text-primary-400" />
+      <ArrowUp className="w-3 h-3 text-primary-400" />
     ) : (
-      <ArrowDown className="w-4 h-4 text-primary-400" />
+      <ArrowDown className="w-3 h-3 text-primary-400" />
     )
   }
-
-  const columns = [
-    { key: 'sku', label: 'SKU', sortable: true },
-    { key: 'descricao', label: 'Descrição', sortable: true },
-    { key: 'categoria', label: 'Categoria', sortable: true },
-    { key: 'estoqueAtual', label: 'Estoque', sortable: true },
-    { key: 'estoqueTransito', label: 'Em Trânsito', sortable: true },
-    { key: 'pedidoPendente', label: 'Pendente', sortable: true },
-    { key: 'coberturaAtual', label: 'Cobertura Atual', sortable: true },
-    { key: 'coberturaProjetada', label: 'Cobertura Projetada', sortable: true },
-    { key: 'status', label: 'Status', sortable: false },
-  ]
 
   return (
     <motion.div
@@ -170,12 +156,12 @@ function DataTable({ items, targetCoverage }) {
       className="glass rounded-2xl overflow-hidden"
     >
       {/* Header */}
-      <div className="p-6 border-b border-white/5">
+      <div className="p-4 border-b border-white/5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-white">Análise de Estoque</h2>
-            <p className="text-sm text-gray-400 mt-1">
-              {sortedItems.length} itens encontrados (Meta: {targetCoverage} dias)
+            <h2 className="text-lg font-semibold text-white">Análise de Estoque</h2>
+            <p className="text-sm text-gray-400">
+              {sortedItems.length} itens (Meta: {targetCoverage} dias)
             </p>
           </div>
 
@@ -185,14 +171,14 @@ function DataTable({ items, targetCoverage }) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar SKU, descrição..."
+                placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full sm:w-64 pl-10 pr-4 py-2 text-sm text-white
-                  bg-white/5 border border-white/10 rounded-lg
+                className="w-full sm:w-48 pl-9 pr-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   placeholder-gray-500
                 "
@@ -201,22 +187,23 @@ function DataTable({ items, targetCoverage }) {
 
             {/* Filter */}
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
               <select
                 value={filterStatus}
                 onChange={(e) => {
                   setFilterStatus(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full sm:w-auto pl-10 pr-8 py-2 text-sm text-white
-                  bg-white/5 border border-white/10 rounded-lg
+                className="w-full sm:w-auto pl-9 pr-6 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
                 "
               >
-                <option value="all">Todos os status</option>
-                <option value="buy">Precisa comprar</option>
-                <option value="healthy">Estoque saudável</option>
+                <option value="all">Todos</option>
+                <option value="buy">Comprar</option>
+                <option value="healthy">Saudável</option>
               </select>
             </div>
           </div>
@@ -224,25 +211,69 @@ function DataTable({ items, targetCoverage }) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="w-full">
+        <table className="w-full table-fixed">
           <thead>
             <tr className="border-b border-white/5">
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => col.sortable && handleSort(col.key)}
-                  className={`
-                    px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider
-                    ${col.sortable ? 'cursor-pointer hover:text-white transition-colors' : ''}
-                  `}
-                >
-                  <div className="flex items-center gap-2">
-                    {col.label}
-                    {col.sortable && getSortIcon(col.key)}
-                  </div>
-                </th>
-              ))}
+              <th
+                onClick={() => handleSort('sku')}
+                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  SKU {getSortIcon('sku')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('descricao')}
+                className="w-[22%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Produto {getSortIcon('descricao')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('estoqueAtual')}
+                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Estoque {getSortIcon('estoqueAtual')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('estoqueTransito')}
+                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Trâns. {getSortIcon('estoqueTransito')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('pedidoPendente')}
+                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Pend. {getSortIcon('pedidoPendente')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('coberturaAtual')}
+                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Cob. Atual {getSortIcon('coberturaAtual')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('coberturaProjetada')}
+                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Cob. Proj. {getSortIcon('coberturaProjetada')}
+                </div>
+              </th>
+              <th className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -253,7 +284,7 @@ function DataTable({ items, targetCoverage }) {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3, delay: index * 0.03 }}
+                  transition={{ duration: 0.2, delay: index * 0.02 }}
                   className={`
                     border-b border-white/5
                     ${item.needsToBuy
@@ -267,46 +298,36 @@ function DataTable({ items, targetCoverage }) {
                     transition-colors duration-200
                   `}
                 >
-                  <td className="px-6 py-4 text-sm font-mono text-white">
+                  <td className="px-3 py-3 text-sm font-mono text-white truncate" title={item.sku}>
                     {item.sku}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-300 max-w-[200px] truncate">
+                  <td className="px-3 py-3 text-sm text-gray-300 truncate" title={item.descricao}>
                     {item.descricao}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
-                    {item.categoria}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-white font-medium">
+                  <td className="px-3 py-3 text-sm text-white font-medium">
                     {item.estoqueAtual}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
+                  <td className="px-3 py-3 text-sm text-gray-400">
                     {item.estoqueTransito}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
+                  <td className="px-3 py-3 text-sm text-gray-400">
                     {item.pedidoPendente}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-300">
-                    {item.coberturaAtual} dias
+                  <td className="px-3 py-3 text-sm text-gray-300">
+                    {item.coberturaAtual}d
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`
-                        text-sm font-medium
-                        ${item.coberturaProjetada < targetCoverage
-                          ? 'text-amber-400'
-                          : 'text-emerald-400'
-                        }
-                      `}>
-                        {item.coberturaProjetada} dias
-                      </span>
-                      {item.needsToBuy && (
-                        <span className="text-xs text-gray-500">
-                          (-{item.coverageGap})
-                        </span>
-                      )}
-                    </div>
+                  <td className="px-3 py-3">
+                    <span className={`
+                      text-sm font-medium
+                      ${item.coberturaProjetada < targetCoverage
+                        ? 'text-amber-400'
+                        : 'text-emerald-400'
+                      }
+                    `}>
+                      {item.coberturaProjetada}d
+                    </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3">
                     <StatusBadge status={item.status} urgency={item.urgency} />
                   </td>
                 </motion.tr>
@@ -317,20 +338,21 @@ function DataTable({ items, targetCoverage }) {
       </div>
 
       {/* Pagination */}
-      <div className="p-6 border-t border-white/5">
+      <div className="p-4 border-t border-white/5">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">Itens por página:</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">Por página:</span>
             <select
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value))
                 setCurrentPage(1)
               }}
-              className="px-3 py-1 text-sm text-white
-                bg-white/5 border border-white/10 rounded-lg
+              className="px-2 py-1 text-sm text-white
+                bg-[#1a1a2e] border border-white/10 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-500/50
                 cursor-pointer
+                [&>option]:bg-[#1a1a2e] [&>option]:text-white
               "
             >
               {PAGE_SIZES.map((size) => (
@@ -341,11 +363,11 @@ function DataTable({ items, targetCoverage }) {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg bg-white/5 border border-white/10
+              className="p-1.5 rounded-lg bg-white/5 border border-white/10
                 disabled:opacity-30 disabled:cursor-not-allowed
                 hover:bg-white/10 transition-colors
               "
@@ -355,7 +377,7 @@ function DataTable({ items, targetCoverage }) {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg bg-white/5 border border-white/10
+              className="p-1.5 rounded-lg bg-white/5 border border-white/10
                 disabled:opacity-30 disabled:cursor-not-allowed
                 hover:bg-white/10 transition-colors
               "
@@ -363,15 +385,16 @@ function DataTable({ items, targetCoverage }) {
               <ChevronLeft className="w-4 h-4 text-gray-400" />
             </button>
 
-            <span className="px-4 text-sm text-gray-400">
-              Página <span className="text-white font-medium">{currentPage}</span> de{' '}
+            <span className="px-3 text-sm text-gray-400">
+              <span className="text-white font-medium">{currentPage}</span>
+              <span className="mx-1">/</span>
               <span className="text-white font-medium">{totalPages || 1}</span>
             </span>
 
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="p-2 rounded-lg bg-white/5 border border-white/10
+              className="p-1.5 rounded-lg bg-white/5 border border-white/10
                 disabled:opacity-30 disabled:cursor-not-allowed
                 hover:bg-white/10 transition-colors
               "
@@ -381,7 +404,7 @@ function DataTable({ items, targetCoverage }) {
             <button
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="p-2 rounded-lg bg-white/5 border border-white/10
+              className="p-1.5 rounded-lg bg-white/5 border border-white/10
                 disabled:opacity-30 disabled:cursor-not-allowed
                 hover:bg-white/10 transition-colors
               "
