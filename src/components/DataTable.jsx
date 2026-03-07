@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
+  SortAsc,
 } from 'lucide-react'
 
 const PAGE_SIZES = [10, 25, 50, 100]
@@ -185,7 +186,7 @@ function DataTable({ items, targetCoverage }) {
               />
             </div>
 
-            {/* Filter */}
+            {/* Filter Status */}
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
               <select
@@ -204,6 +205,38 @@ function DataTable({ items, targetCoverage }) {
                 <option value="all">Todos</option>
                 <option value="buy">Comprar</option>
                 <option value="healthy">Saudável</option>
+              </select>
+            </div>
+
+            {/* Sort */}
+            <div className="relative">
+              <SortAsc className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+              <select
+                value={sortConfig.key ? `${sortConfig.key}-${sortConfig.direction}` : ''}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (!value) {
+                    setSortConfig({ key: null, direction: 'asc' })
+                  } else {
+                    const [key, direction] = value.split('-')
+                    setSortConfig({ key, direction })
+                  }
+                  setCurrentPage(1)
+                }}
+                className="w-full sm:w-auto pl-9 pr-6 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="">Ordenar por...</option>
+                <option value="estoqueAtual-asc">Estoque: Menor → Maior</option>
+                <option value="estoqueAtual-desc">Estoque: Maior → Menor</option>
+                <option value="coberturaProjetada-asc">Cobertura: Menor → Maior</option>
+                <option value="coberturaProjetada-desc">Cobertura: Maior → Menor</option>
+                <option value="sku-asc">SKU: A → Z</option>
+                <option value="sku-desc">SKU: Z → A</option>
               </select>
             </div>
           </div>
