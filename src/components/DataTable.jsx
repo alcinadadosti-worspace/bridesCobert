@@ -40,9 +40,9 @@ function StatusBadge({ status, urgency, excessLevel }) {
     },
     'COMPRAR-low': {
       icon: ShoppingCart,
-      bg: 'bg-yellow-500/20',
-      border: 'border-yellow-500/30',
-      text: 'text-yellow-400',
+      bg: 'bg-lime-500/20',
+      border: 'border-lime-500/30',
+      text: 'text-lime-400',
       label: 'Baixo',
     },
     // Saudável
@@ -356,7 +356,7 @@ function DataTable({ items, targetCoverage }) {
                         ? 'bg-red-500/5 hover:bg-red-500/10'
                         : item.urgency === 'medium'
                           ? 'bg-amber-500/5 hover:bg-amber-500/10'
-                          : 'bg-yellow-500/5 hover:bg-yellow-500/10'
+                          : 'bg-lime-500/5 hover:bg-lime-500/10'
                       : item.hasExcess
                         ? item.excessLevel === 'high'
                           ? 'bg-purple-500/5 hover:bg-purple-500/10'

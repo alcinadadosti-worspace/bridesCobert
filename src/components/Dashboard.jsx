@@ -176,10 +176,10 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
                       <p className="text-sm text-gray-400">Média urgência</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-lime-500/10 border border-lime-500/20">
+                    <div className="w-3 h-3 rounded-full bg-lime-500" />
                     <div>
-                      <span className="text-2xl font-bold text-yellow-400">{summary.lowUrgency}</span>
+                      <span className="text-2xl font-bold text-lime-400">{summary.lowUrgency}</span>
                       <p className="text-sm text-gray-400">Baixa urgência</p>
                     </div>
                   </div>
