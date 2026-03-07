@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Package, AlertTriangle, CheckCircle, TrendingDown } from 'lucide-react'
+import { Package, AlertTriangle, CheckCircle, TrendingUp, PackagePlus } from 'lucide-react'
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -32,6 +32,9 @@ function SummaryCards({ summary }) {
       gradient: 'from-amber-500/20 to-orange-500/20',
       iconColor: 'text-amber-400',
       highlight: summary.needToBuy > 0,
+      highlightColor: 'ring-amber-500/30',
+      badgeColor: 'bg-amber-500/20 text-amber-400',
+      badgeText: 'Atenção',
     },
     {
       title: 'Estoque Saudável',
@@ -42,12 +45,16 @@ function SummaryCards({ summary }) {
       iconColor: 'text-emerald-400',
     },
     {
-      title: 'Cobertura Média',
-      value: `${summary.avgCoverage}`,
-      subtitle: 'dias de cobertura',
-      icon: TrendingDown,
-      gradient: 'from-purple-500/20 to-pink-500/20',
+      title: 'Excesso de Estoque',
+      value: summary.hasExcess,
+      subtitle: `${((summary.hasExcess / summary.totalSKUs) * 100).toFixed(1)}% do total`,
+      icon: TrendingUp,
+      gradient: 'from-purple-500/20 to-blue-500/20',
       iconColor: 'text-purple-400',
+      highlight: summary.hasExcess > 0,
+      highlightColor: 'ring-purple-500/30',
+      badgeColor: 'bg-purple-500/20 text-purple-400',
+      badgeText: 'Transferir',
     },
   ]
 
@@ -64,7 +71,7 @@ function SummaryCards({ summary }) {
           className={`
             relative overflow-hidden rounded-2xl
             glass p-6
-            ${card.highlight ? 'ring-2 ring-amber-500/30' : ''}
+            ${card.highlight ? `ring-2 ${card.highlightColor || 'ring-amber-500/30'}` : ''}
             transition-shadow duration-300
             hover:shadow-xl hover:shadow-primary-500/10
           `}
@@ -89,9 +96,9 @@ function SummaryCards({ summary }) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', delay: 0.5 }}
-                  className="px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium"
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${card.badgeColor || 'bg-amber-500/20 text-amber-400'}`}
                 >
-                  Atenção
+                  {card.badgeText || 'Atenção'}
                 </motion.div>
               )}
             </div>

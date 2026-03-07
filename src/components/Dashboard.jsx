@@ -25,6 +25,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
       'Cobertura Projetada',
       'Status',
       'Gap de Cobertura',
+      'Dias Excesso',
     ]
 
     const rows = items.map((item) => [
@@ -38,6 +39,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
       item.coberturaProjetada,
       item.status,
       item.coverageGap,
+      item.excessDays || 0,
     ])
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
@@ -145,42 +147,70 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
           <SummaryCards summary={summary} />
         </section>
 
-        {/* Urgency breakdown */}
-        {summary.needToBuy > 0 && (
+        {/* Urgency and Excess breakdown */}
+        {(summary.needToBuy > 0 || summary.hasExcess > 0) && (
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mb-8"
+            className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6"
           >
-            <div className="glass rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Distribuição por Urgência
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <div>
-                    <span className="text-2xl font-bold text-red-400">{summary.highUrgency}</span>
-                    <p className="text-sm text-gray-400">Alta urgência</p>
+            {/* Urgency breakdown */}
+            {summary.needToBuy > 0 && (
+              <div className="glass rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Distribuição por Urgência de Compra
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                    <div className="w-3 h-3 rounded-full bg-red-500" />
+                    <div>
+                      <span className="text-2xl font-bold text-red-400">{summary.highUrgency}</span>
+                      <p className="text-sm text-gray-400">Alta urgência</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <div>
-                    <span className="text-2xl font-bold text-amber-400">{summary.mediumUrgency}</span>
-                    <p className="text-sm text-gray-400">Média urgência</p>
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    <div>
+                      <span className="text-2xl font-bold text-amber-400">{summary.mediumUrgency}</span>
+                      <p className="text-sm text-gray-400">Média urgência</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <div>
-                    <span className="text-2xl font-bold text-yellow-400">{summary.lowUrgency}</span>
-                    <p className="text-sm text-gray-400">Baixa urgência</p>
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                    <div>
+                      <span className="text-2xl font-bold text-yellow-400">{summary.lowUrgency}</span>
+                      <p className="text-sm text-gray-400">Baixa urgência</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Excess breakdown */}
+            {summary.hasExcess > 0 && (
+              <div className="glass rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Excesso de Estoque (Transferir)
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <div className="w-3 h-3 rounded-full bg-purple-500" />
+                    <div>
+                      <span className="text-2xl font-bold text-purple-400">{summary.excessHigh}</span>
+                      <p className="text-sm text-gray-400">Excesso alto (&gt;3x meta)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <div>
+                      <span className="text-2xl font-bold text-blue-400">{summary.excessModerate}</span>
+                      <p className="text-sm text-gray-400">Excesso moderado (2-3x meta)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.section>
         )}
 

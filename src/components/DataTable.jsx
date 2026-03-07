@@ -15,45 +15,71 @@ import {
   AlertTriangle,
   AlertCircle,
   SortAsc,
+  PackagePlus,
+  TrendingUp,
 } from 'lucide-react'
 
 const PAGE_SIZES = [10, 25, 50, 100]
 
-function StatusBadge({ status, urgency }) {
-  const needsToBuy = status === 'COMPRAR'
-
-  const urgencyConfig = {
-    high: {
+function StatusBadge({ status, urgency, excessLevel }) {
+  const statusConfig = {
+    // Comprar
+    'COMPRAR-high': {
       icon: AlertCircle,
       bg: 'bg-red-500/20',
       border: 'border-red-500/30',
       text: 'text-red-400',
       label: 'Urgente',
     },
-    medium: {
+    'COMPRAR-medium': {
       icon: AlertTriangle,
       bg: 'bg-amber-500/20',
       border: 'border-amber-500/30',
       text: 'text-amber-400',
       label: 'Médio',
     },
-    low: {
+    'COMPRAR-low': {
       icon: ShoppingCart,
       bg: 'bg-yellow-500/20',
       border: 'border-yellow-500/30',
       text: 'text-yellow-400',
       label: 'Baixo',
     },
-    none: {
+    // Saudável
+    'SAUDÁVEL': {
       icon: CheckCircle2,
       bg: 'bg-emerald-500/20',
       border: 'border-emerald-500/30',
       text: 'text-emerald-400',
       label: 'OK',
     },
+    // Excesso
+    'EXCESSO-moderate': {
+      icon: PackagePlus,
+      bg: 'bg-blue-500/20',
+      border: 'border-blue-500/30',
+      text: 'text-blue-400',
+      label: 'Excesso',
+    },
+    'EXCESSO-high': {
+      icon: TrendingUp,
+      bg: 'bg-purple-500/20',
+      border: 'border-purple-500/30',
+      text: 'text-purple-400',
+      label: 'Excesso Alto',
+    },
   }
 
-  const config = needsToBuy ? urgencyConfig[urgency] : urgencyConfig.none
+  let configKey
+  if (status === 'COMPRAR') {
+    configKey = `COMPRAR-${urgency}`
+  } else if (status === 'EXCESSO') {
+    configKey = `EXCESSO-${excessLevel}`
+  } else {
+    configKey = 'SAUDÁVEL'
+  }
+
+  const config = statusConfig[configKey] || statusConfig['SAUDÁVEL']
   const Icon = config.icon
 
   return (
@@ -68,7 +94,7 @@ function StatusBadge({ status, urgency }) {
     >
       <Icon className={`w-3 h-3 ${config.text}`} />
       <span className={`text-xs font-medium ${config.text} whitespace-nowrap`}>
-        {needsToBuy ? config.label : 'OK'}
+        {config.label}
       </span>
     </motion.div>
   )
@@ -96,9 +122,13 @@ function DataTable({ items, targetCoverage }) {
     }
 
     if (filterStatus !== 'all') {
-      result = result.filter((item) =>
-        filterStatus === 'buy' ? item.needsToBuy : !item.needsToBuy
-      )
+      if (filterStatus === 'buy') {
+        result = result.filter((item) => item.needsToBuy)
+      } else if (filterStatus === 'healthy') {
+        result = result.filter((item) => !item.needsToBuy && !item.hasExcess)
+      } else if (filterStatus === 'excess') {
+        result = result.filter((item) => item.hasExcess)
+      }
     }
 
     return result
@@ -205,6 +235,7 @@ function DataTable({ items, targetCoverage }) {
                 <option value="all">Todos</option>
                 <option value="buy">Comprar</option>
                 <option value="healthy">Saudável</option>
+                <option value="excess">Excesso</option>
               </select>
             </div>
 
@@ -326,7 +357,11 @@ function DataTable({ items, targetCoverage }) {
                         : item.urgency === 'medium'
                           ? 'bg-amber-500/5 hover:bg-amber-500/10'
                           : 'bg-yellow-500/5 hover:bg-yellow-500/10'
-                      : 'hover:bg-white/[0.02]'
+                      : item.hasExcess
+                        ? item.excessLevel === 'high'
+                          ? 'bg-purple-500/5 hover:bg-purple-500/10'
+                          : 'bg-blue-500/5 hover:bg-blue-500/10'
+                        : 'hover:bg-white/[0.02]'
                     }
                     transition-colors duration-200
                   `}
@@ -354,14 +389,18 @@ function DataTable({ items, targetCoverage }) {
                       text-sm font-medium
                       ${item.coberturaProjetada < targetCoverage
                         ? 'text-amber-400'
-                        : 'text-emerald-400'
+                        : item.hasExcess
+                          ? item.excessLevel === 'high'
+                            ? 'text-purple-400'
+                            : 'text-blue-400'
+                          : 'text-emerald-400'
                       }
                     `}>
                       {item.coberturaProjetada}d
                     </span>
                   </td>
                   <td className="px-3 py-3">
-                    <StatusBadge status={item.status} urgency={item.urgency} />
+                    <StatusBadge status={item.status} urgency={item.urgency} excessLevel={item.excessLevel} />
                   </td>
                 </motion.tr>
               ))}

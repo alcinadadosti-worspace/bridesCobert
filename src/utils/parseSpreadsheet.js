@@ -162,11 +162,30 @@ export function calculateDecision(item, targetCoverage) {
   const needsToBuy = item.coberturaProjetada < targetCoverage
   const coverageGap = targetCoverage - item.coberturaProjetada
 
+  // Verificar excesso de estoque
+  const excessRatio = item.coberturaProjetada / targetCoverage
+  const hasExcess = item.coberturaProjetada > targetCoverage * 2
+  const excessLevel = excessRatio > 3 ? 'high' : excessRatio > 2 ? 'moderate' : 'none'
+  const excessDays = hasExcess ? Math.round((item.coberturaProjetada - targetCoverage) * 10) / 10 : 0
+
+  // Determinar status
+  let status
+  if (needsToBuy) {
+    status = 'COMPRAR'
+  } else if (hasExcess) {
+    status = 'EXCESSO'
+  } else {
+    status = 'SAUDÁVEL'
+  }
+
   return {
     ...item,
     needsToBuy,
+    hasExcess,
+    excessLevel,
+    excessDays,
     coverageGap: Math.max(0, Math.round(coverageGap * 10) / 10),
-    status: needsToBuy ? 'COMPRAR' : 'SAUDÁVEL',
+    status,
     urgency: needsToBuy
       ? (coverageGap > targetCoverage * 0.5 ? 'high' : coverageGap > targetCoverage * 0.25 ? 'medium' : 'low')
       : 'none'
@@ -179,10 +198,14 @@ export function analyzeData(data, targetCoverage) {
   const summary = {
     totalSKUs: analyzed.length,
     needToBuy: analyzed.filter(item => item.needsToBuy).length,
-    healthy: analyzed.filter(item => !item.needsToBuy).length,
+    healthy: analyzed.filter(item => !item.needsToBuy && !item.hasExcess).length,
     highUrgency: analyzed.filter(item => item.urgency === 'high').length,
     mediumUrgency: analyzed.filter(item => item.urgency === 'medium').length,
     lowUrgency: analyzed.filter(item => item.urgency === 'low').length,
+    // Excesso
+    hasExcess: analyzed.filter(item => item.hasExcess).length,
+    excessHigh: analyzed.filter(item => item.excessLevel === 'high').length,
+    excessModerate: analyzed.filter(item => item.excessLevel === 'moderate').length,
     categories: [...new Set(analyzed.map(item => item.categoria))],
     avgCoverage: Math.round((analyzed.reduce((acc, item) => acc + item.coberturaProjetada, 0) / analyzed.length) * 10) / 10
   }
