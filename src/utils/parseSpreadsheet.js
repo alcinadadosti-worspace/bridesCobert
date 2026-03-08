@@ -159,13 +159,15 @@ export function parseSpreadsheet(file) {
 }
 
 export function calculateDecision(item, targetCoverage) {
-  const needsToBuy = item.coberturaProjetada < targetCoverage
+  const coverageRatio = item.coberturaProjetada / targetCoverage
   const coverageGap = targetCoverage - item.coberturaProjetada
 
-  // Verificar excesso de estoque
-  const excessRatio = item.coberturaProjetada / targetCoverage
-  const hasExcess = item.coberturaProjetada > targetCoverage * 2
-  const excessLevel = excessRatio > 3 ? 'high' : excessRatio > 2 ? 'moderate' : 'none'
+  // Determinar se precisa comprar (< 75% da meta)
+  const needsToBuy = coverageRatio < 0.75
+
+  // Verificar excesso de estoque (> 100% da meta)
+  const hasExcess = coverageRatio > 1
+  const excessLevel = coverageRatio > 2 ? 'high' : coverageRatio > 1 ? 'moderate' : 'none'
   const excessDays = hasExcess ? Math.round((item.coberturaProjetada - targetCoverage) * 10) / 10 : 0
 
   // Determinar status
@@ -178,6 +180,16 @@ export function calculateDecision(item, targetCoverage) {
     status = 'SAUDÁVEL'
   }
 
+  // Determinar urgência de compra
+  let urgency = 'none'
+  if (needsToBuy) {
+    if (coverageRatio < 0.5) {
+      urgency = 'high'
+    } else {
+      urgency = 'medium'
+    }
+  }
+
   return {
     ...item,
     needsToBuy,
@@ -186,9 +198,7 @@ export function calculateDecision(item, targetCoverage) {
     excessDays,
     coverageGap: Math.max(0, Math.round(coverageGap * 10) / 10),
     status,
-    urgency: needsToBuy
-      ? (coverageGap > targetCoverage * 0.5 ? 'high' : coverageGap > targetCoverage * 0.25 ? 'medium' : 'low')
-      : 'none'
+    urgency
   }
 }
 
@@ -201,7 +211,6 @@ export function analyzeData(data, targetCoverage) {
     healthy: analyzed.filter(item => !item.needsToBuy && !item.hasExcess).length,
     highUrgency: analyzed.filter(item => item.urgency === 'high').length,
     mediumUrgency: analyzed.filter(item => item.urgency === 'medium').length,
-    lowUrgency: analyzed.filter(item => item.urgency === 'low').length,
     // Excesso
     hasExcess: analyzed.filter(item => item.hasExcess).length,
     excessHigh: analyzed.filter(item => item.excessLevel === 'high').length,
