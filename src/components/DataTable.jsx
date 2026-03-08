@@ -18,6 +18,7 @@ import {
   PackagePlus,
   TrendingUp,
   Store,
+  Download,
 } from 'lucide-react'
 
 const PAGE_SIZES = [10, 25, 50, 100]
@@ -194,6 +195,53 @@ function DataTable({ items, targetCoverage }) {
     )
   }
 
+  const handleExport = () => {
+    const headers = [
+      'SKU',
+      'Descrição',
+      'Categoria',
+      'Loja',
+      'Classe',
+      'Fase',
+      'Estoque Atual',
+      'Em Trânsito',
+      'Pedido Pendente',
+      'Cobertura Atual',
+      'Cobertura Projetada',
+      'Status',
+      'Gap de Cobertura',
+      'Dias Excesso',
+    ]
+
+    // Usa sortedItems que já está filtrado e ordenado
+    const rows = sortedItems.map((item) => [
+      item.sku,
+      `"${item.descricao}"`,
+      item.categoria,
+      item.loja,
+      item.classe,
+      item.faseProduto,
+      item.estoqueAtual,
+      item.estoqueTransito,
+      item.pedidoPendente,
+      item.coberturaAtual,
+      item.coberturaProjetada,
+      item.status,
+      item.coverageGap,
+      item.excessDays || 0,
+    ])
+
+    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `analise_estoque_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -351,6 +399,20 @@ function DataTable({ items, targetCoverage }) {
                 <option value="sku-desc">SKU: Z → A</option>
               </select>
             </div>
+
+            {/* Export Button */}
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg
+                bg-emerald-500/20 border border-emerald-500/30
+                text-sm font-medium text-emerald-400
+                hover:bg-emerald-500/30 transition-colors
+              "
+              title={`Exportar ${sortedItems.length} itens filtrados`}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
           </div>
         </div>
       </div>

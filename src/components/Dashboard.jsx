@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, Download, FileSpreadsheet, Table, ArrowLeftRight } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
@@ -19,53 +19,6 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
     () => analyzeTransfers(data, targetCoverage),
     [data, targetCoverage]
   )
-
-  const handleExport = () => {
-    // Criar CSV para download
-    const headers = [
-      'SKU',
-      'Descrição',
-      'Categoria',
-      'Loja',
-      'Classe',
-      'Fase',
-      'Estoque Atual',
-      'Em Trânsito',
-      'Pedido Pendente',
-      'Cobertura Atual',
-      'Cobertura Projetada',
-      'Status',
-      'Gap de Cobertura',
-      'Dias Excesso',
-    ]
-
-    const rows = items.map((item) => [
-      item.sku,
-      `"${item.descricao}"`,
-      item.categoria,
-      item.loja,
-      item.classe,
-      item.faseProduto,
-      item.estoqueAtual,
-      item.estoqueTransito,
-      item.pedidoPendente,
-      item.coberturaAtual,
-      item.coberturaProjetada,
-      item.status,
-      item.coverageGap,
-      item.excessDays || 0,
-    ])
-
-    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
-
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `analise_estoque_${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
 
   return (
     <motion.div
@@ -103,21 +56,6 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
               />
 
               <div className="flex items-center gap-2">
-                {/* Export Button */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleExport}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl
-                    bg-white/5 border border-white/10
-                    text-sm font-medium text-white
-                    hover:bg-white/10 transition-colors
-                  "
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Exportar</span>
-                </motion.button>
-
                 {/* Reset Button */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
