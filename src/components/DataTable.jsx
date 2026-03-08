@@ -17,6 +17,7 @@ import {
   SortAsc,
   PackagePlus,
   TrendingUp,
+  Store,
 } from 'lucide-react'
 
 const PAGE_SIZES = [10, 25, 50, 100]
@@ -99,6 +100,14 @@ function DataTable({ items, targetCoverage }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterLoja, setFilterLoja] = useState('all')
+  const [filterClasse, setFilterClasse] = useState('all')
+  const [filterFase, setFilterFase] = useState('all')
+
+  // Get unique values for filters
+  const lojas = useMemo(() => [...new Set(items.map(i => i.loja))].filter(Boolean).sort(), [items])
+  const classes = useMemo(() => [...new Set(items.map(i => i.classe))].filter(Boolean).sort(), [items])
+  const fases = useMemo(() => [...new Set(items.map(i => i.faseProduto))].filter(Boolean).sort(), [items])
 
   // Filtragem
   const filteredItems = useMemo(() => {
@@ -110,7 +119,8 @@ function DataTable({ items, targetCoverage }) {
         (item) =>
           item.sku.toLowerCase().includes(term) ||
           item.descricao.toLowerCase().includes(term) ||
-          item.categoria.toLowerCase().includes(term)
+          item.categoria.toLowerCase().includes(term) ||
+          item.loja?.toLowerCase().includes(term)
       )
     }
 
@@ -124,8 +134,20 @@ function DataTable({ items, targetCoverage }) {
       }
     }
 
+    if (filterLoja !== 'all') {
+      result = result.filter((item) => item.loja === filterLoja)
+    }
+
+    if (filterClasse !== 'all') {
+      result = result.filter((item) => item.classe === filterClasse)
+    }
+
+    if (filterFase !== 'all') {
+      result = result.filter((item) => item.faseProduto === filterFase)
+    }
+
     return result
-  }, [items, searchTerm, filterStatus])
+  }, [items, searchTerm, filterStatus, filterLoja, filterClasse, filterFase])
 
   // Ordenação
   const sortedItems = useMemo(() => {
@@ -232,6 +254,72 @@ function DataTable({ items, targetCoverage }) {
               </select>
             </div>
 
+            {/* Filter Loja */}
+            {lojas.length > 1 && (
+              <select
+                value={filterLoja}
+                onChange={(e) => {
+                  setFilterLoja(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full sm:w-auto px-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="all">Todas Lojas</option>
+                {lojas.map(loja => (
+                  <option key={loja} value={loja}>{loja}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Filter Classe */}
+            {classes.length > 1 && (
+              <select
+                value={filterClasse}
+                onChange={(e) => {
+                  setFilterClasse(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full sm:w-auto px-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="all">Todas Classes</option>
+                {classes.map(classe => (
+                  <option key={classe} value={classe}>Classe {classe}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Filter Fase */}
+            {fases.length > 1 && (
+              <select
+                value={filterFase}
+                onChange={(e) => {
+                  setFilterFase(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full sm:w-auto px-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="all">Todas Fases</option>
+                {fases.map(fase => (
+                  <option key={fase} value={fase}>{fase}</option>
+                ))}
+              </select>
+            )}
+
             {/* Sort */}
             <div className="relative">
               <SortAsc className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
@@ -274,7 +362,7 @@ function DataTable({ items, targetCoverage }) {
             <tr className="border-b border-white/5">
               <th
                 onClick={() => handleSort('sku')}
-                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   SKU {getSortIcon('sku')}
@@ -282,15 +370,23 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('descricao')}
-                className="w-[22%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[18%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Produto {getSortIcon('descricao')}
                 </div>
               </th>
               <th
+                onClick={() => handleSort('loja')}
+                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  Loja {getSortIcon('loja')}
+                </div>
+              </th>
+              <th
                 onClick={() => handleSort('estoqueAtual')}
-                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Estoque {getSortIcon('estoqueAtual')}
@@ -298,7 +394,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('estoqueTransito')}
-                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Trâns. {getSortIcon('estoqueTransito')}
@@ -306,7 +402,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('pedidoPendente')}
-                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Pend. {getSortIcon('pedidoPendente')}
@@ -314,7 +410,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('coberturaAtual')}
-                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Cob. Atual {getSortIcon('coberturaAtual')}
@@ -322,13 +418,13 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('coberturaProjetada')}
-                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Cob. Proj. {getSortIcon('coberturaProjetada')}
                 </div>
               </th>
-              <th className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
+              <th className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
                 Status
               </th>
             </tr>
@@ -362,6 +458,9 @@ function DataTable({ items, targetCoverage }) {
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-300 truncate" title={item.descricao}>
                     {item.descricao}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-cyan-400 truncate" title={item.loja}>
+                    {item.loja}
                   </td>
                   <td className="px-3 py-3 text-sm text-white font-medium">
                     {item.estoqueAtual}

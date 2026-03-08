@@ -1,14 +1,22 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, Download, FileSpreadsheet } from 'lucide-react'
+import { Sparkles, RotateCcw, Download, FileSpreadsheet, Table, ArrowLeftRight } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
+import TransferSuggestions from './TransferSuggestions'
 import CoverageSlider from './CoverageSlider'
-import { analyzeData } from '../utils/parseSpreadsheet'
+import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
 
 function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
+  const [activeTab, setActiveTab] = useState('table')
+
   const { items, summary } = useMemo(
     () => analyzeData(data, targetCoverage),
+    [data, targetCoverage]
+  )
+
+  const transfers = useMemo(
+    () => analyzeTransfers(data, targetCoverage),
     [data, targetCoverage]
   )
 
@@ -18,6 +26,9 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
       'SKU',
       'Descrição',
       'Categoria',
+      'Loja',
+      'Classe',
+      'Fase',
       'Estoque Atual',
       'Em Trânsito',
       'Pedido Pendente',
@@ -32,6 +43,9 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
       item.sku,
       `"${item.descricao}"`,
       item.categoria,
+      item.loja,
+      item.classe,
+      item.faseProduto,
       item.estoqueAtual,
       item.estoqueTransito,
       item.pedidoPendente,
@@ -207,9 +221,51 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
           </motion.section>
         )}
 
-        {/* Data Table */}
+        {/* Tab selector */}
+        <section className="mb-6">
+          <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl w-fit">
+            <button
+              onClick={() => setActiveTab('table')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeTab === 'table'
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'}
+              `}
+            >
+              <Table className="w-4 h-4" />
+              Análise de Estoque
+            </button>
+            <button
+              onClick={() => setActiveTab('transfers')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeTab === 'transfers'
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'}
+              `}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              Transferências
+              {transfers.length > 0 && (
+                <span className={`
+                  px-1.5 py-0.5 text-xs rounded-full
+                  ${activeTab === 'transfers' ? 'bg-white/20' : 'bg-cyan-500/20 text-cyan-400'}
+                `}>
+                  {transfers.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </section>
+
+        {/* Content based on active tab */}
         <section>
-          <DataTable items={items} targetCoverage={targetCoverage} />
+          {activeTab === 'table' ? (
+            <DataTable items={items} targetCoverage={targetCoverage} />
+          ) : (
+            <TransferSuggestions transfers={transfers} />
+          )}
         </section>
       </main>
 
