@@ -215,6 +215,23 @@ export function parseSpreadsheet(file) {
 }
 
 export function calculateDecision(item, targetCoverage) {
+  // Calcular estoque total (atual + trânsito + pendente)
+  const estoqueTotal = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
+
+  // Se estoque total é 0, forçar urgência máxima independente da cobertura projetada da planilha
+  if (estoqueTotal === 0) {
+    return {
+      ...item,
+      needsToBuy: true,
+      hasExcess: false,
+      excessLevel: 'none',
+      excessDays: 0,
+      coverageGap: targetCoverage,
+      status: 'COMPRAR',
+      urgency: 'high'
+    }
+  }
+
   const coverageRatio = item.coberturaProjetada / targetCoverage
   const coverageGap = targetCoverage - item.coberturaProjetada
 
