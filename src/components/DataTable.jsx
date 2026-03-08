@@ -453,11 +453,40 @@ function DataTable({ items, targetCoverage }) {
                     transition-colors duration-200
                   `}
                 >
-                  <td className="px-3 py-3 text-sm font-mono text-white truncate" title={item.sku}>
-                    {item.sku}
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-mono text-white truncate" title={item.sku}>
+                        {item.sku}
+                      </span>
+                      {item.classe && (
+                        <span className={`
+                          px-1.5 py-0.5 text-[10px] font-bold rounded
+                          ${item.classe === 'A' ? 'bg-emerald-500/20 text-emerald-400' :
+                            item.classe === 'B' ? 'bg-blue-500/20 text-blue-400' :
+                            item.classe === 'C' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-gray-500/20 text-gray-400'}
+                        `}>
+                          {item.classe}
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-3 py-3 text-sm text-gray-300 truncate" title={item.descricao}>
-                    {item.descricao}
+                  <td className="px-3 py-3">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-gray-300 truncate" title={item.descricao}>
+                        {item.descricao}
+                      </span>
+                      {item.faseProduto && (
+                        <span className={`
+                          text-[10px] mt-0.5
+                          ${item.faseProduto === 'Lançamento' ? 'text-pink-400' :
+                            item.faseProduto === 'Maduro' ? 'text-cyan-400' :
+                            'text-gray-500'}
+                        `}>
+                          {item.faseProduto}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-3 text-sm text-cyan-400 truncate" title={item.loja}>
                     {item.loja}

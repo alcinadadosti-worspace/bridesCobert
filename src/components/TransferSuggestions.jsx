@@ -33,15 +33,31 @@ function TransferCard({ transfer, index }) {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               {transfer.priority === 'high' && (
                 <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
                   Alta Prioridade
                 </span>
               )}
               {transfer.classe && (
-                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-cyan-500/20 text-cyan-400">
+                <span className={`
+                  px-2 py-0.5 text-xs font-bold rounded-full
+                  ${transfer.classe === 'A' ? 'bg-emerald-500/20 text-emerald-400' :
+                    transfer.classe === 'B' ? 'bg-blue-500/20 text-blue-400' :
+                    transfer.classe === 'C' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-gray-500/20 text-gray-400'}
+                `}>
                   Classe {transfer.classe}
+                </span>
+              )}
+              {transfer.faseProduto && (
+                <span className={`
+                  px-2 py-0.5 text-xs font-medium rounded-full
+                  ${transfer.faseProduto === 'Lançamento' ? 'bg-pink-500/20 text-pink-400' :
+                    transfer.faseProduto === 'Maduro' ? 'bg-cyan-500/20 text-cyan-400' :
+                    'bg-gray-500/20 text-gray-400'}
+                `}>
+                  {transfer.faseProduto}
                 </span>
               )}
             </div>
@@ -151,6 +167,27 @@ function TransferCard({ transfer, index }) {
 function TransferSuggestions({ transfers }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterPriority, setFilterPriority] = useState('all')
+  const [filterClasse, setFilterClasse] = useState('all')
+  const [filterFase, setFilterFase] = useState('all')
+  const [filterLoja, setFilterLoja] = useState('all')
+
+  // Extract unique values for filters
+  const classes = useMemo(() =>
+    [...new Set(transfers.map(t => t.classe))].filter(Boolean).sort(),
+    [transfers]
+  )
+  const fases = useMemo(() =>
+    [...new Set(transfers.map(t => t.faseProduto))].filter(Boolean).sort(),
+    [transfers]
+  )
+  const lojas = useMemo(() => {
+    const allLojas = new Set()
+    transfers.forEach(t => {
+      t.from.forEach(s => allLojas.add(s.loja))
+      t.to.forEach(s => allLojas.add(s.loja))
+    })
+    return [...allLojas].sort()
+  }, [transfers])
 
   const filteredTransfers = useMemo(() => {
     let result = [...transfers]
@@ -170,8 +207,23 @@ function TransferSuggestions({ transfers }) {
       result = result.filter((t) => t.priority === filterPriority)
     }
 
+    if (filterClasse !== 'all') {
+      result = result.filter((t) => t.classe === filterClasse)
+    }
+
+    if (filterFase !== 'all') {
+      result = result.filter((t) => t.faseProduto === filterFase)
+    }
+
+    if (filterLoja !== 'all') {
+      result = result.filter((t) =>
+        t.from.some((s) => s.loja === filterLoja) ||
+        t.to.some((s) => s.loja === filterLoja)
+      )
+    }
+
     return result
-  }, [transfers, searchTerm, filterPriority])
+  }, [transfers, searchTerm, filterPriority, filterClasse, filterFase, filterLoja])
 
   if (transfers.length === 0) {
     return (
@@ -253,6 +305,63 @@ function TransferSuggestions({ transfers }) {
                 <option value="medium">Média Prioridade</option>
               </select>
             </div>
+
+            {/* Filter Loja */}
+            {lojas.length > 1 && (
+              <select
+                value={filterLoja}
+                onChange={(e) => setFilterLoja(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="all">Todas Lojas</option>
+                {lojas.map(loja => (
+                  <option key={loja} value={loja}>{loja}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Filter Classe */}
+            {classes.length > 1 && (
+              <select
+                value={filterClasse}
+                onChange={(e) => setFilterClasse(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="all">Todas Classes</option>
+                {classes.map(classe => (
+                  <option key={classe} value={classe}>Classe {classe}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Filter Fase */}
+            {fases.length > 1 && (
+              <select
+                value={filterFase}
+                onChange={(e) => setFilterFase(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 text-sm text-white
+                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                  appearance-none cursor-pointer
+                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                "
+              >
+                <option value="all">Todas Fases</option>
+                {fases.map(fase => (
+                  <option key={fase} value={fase}>{fase}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       </div>
