@@ -8,7 +8,9 @@ export const STORE_NAMES = {
   24671: 'Loja Teotonio Vilela',
   24303: 'Loja São Sebastião',
   1515: 'VD Palmeira dos Índios',
-  1048: 'VD Penedo'
+  1048: 'VD Penedo',
+  13707: 'VD Penedo',
+  13706: 'VD Palmeira'
 }
 
 // Categorias a serem excluídas
