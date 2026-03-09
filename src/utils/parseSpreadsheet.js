@@ -219,6 +219,29 @@ export function calculateDecision(item, targetCoverage) {
   // Calcular estoque total (atual + trânsito + pendente)
   const estoqueTotal = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
 
+  // Verificar se o produto está em descontinuação/descontinuado
+  const faseNormalizada = item.faseProduto?.toLowerCase() || ''
+  const isDescontinuado = faseNormalizada.includes('descontinua')
+
+  // Produtos descontinuados nunca devem ter sugestão de compra
+  if (isDescontinuado) {
+    const coverageRatio = item.coberturaProjetada / targetCoverage
+    const hasExcess = coverageRatio > 1
+    const excessLevel = coverageRatio > 2 ? 'high' : coverageRatio > 1 ? 'moderate' : 'none'
+    const excessDays = hasExcess ? Math.round((item.coberturaProjetada - targetCoverage) * 10) / 10 : 0
+
+    return {
+      ...item,
+      needsToBuy: false,
+      hasExcess,
+      excessLevel,
+      excessDays,
+      coverageGap: 0,
+      status: hasExcess ? 'EXCESSO' : 'SAUDÁVEL',
+      urgency: 'none'
+    }
+  }
+
   // Se estoque total é 0, forçar urgência máxima independente da cobertura projetada da planilha
   if (estoqueTotal === 0) {
     return {
