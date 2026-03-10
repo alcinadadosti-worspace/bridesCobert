@@ -42,7 +42,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
                 <Sparkles className="w-5 h-5 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-xl font-bold text-white">Coverage Dashboard</h1>
+                <h1 className="text-xl font-bold text-white">Supply Flow</h1>
                 <p className="text-sm text-gray-400">Análise de Decisão de Compras</p>
               </div>
             </div>
