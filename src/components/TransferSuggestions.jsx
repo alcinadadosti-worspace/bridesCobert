@@ -9,7 +9,9 @@ import {
   ChevronUp,
   Search,
   Filter,
+  Download,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 function TransferCard({ transfer, index }) {
   const [expanded, setExpanded] = useState(false)
@@ -225,6 +227,66 @@ function TransferSuggestions({ transfers }) {
     return result
   }, [transfers, searchTerm, filterPriority, filterClasse, filterFase, filterLoja])
 
+  const handleExport = () => {
+    const headers = [
+      'SKU',
+      'Descrição',
+      'Classe',
+      'Fase',
+      'Prioridade',
+      'Loja Origem',
+      'Estoque Origem',
+      'Cobertura Origem (dias)',
+      'Loja Destino',
+      'Estoque Destino',
+      'Cobertura Destino (dias)',
+    ]
+
+    // Expande as transferências em linhas (uma linha para cada combinação origem-destino)
+    const rows = []
+    filteredTransfers.forEach((transfer) => {
+      transfer.from.forEach((fromStore) => {
+        transfer.to.forEach((toStore) => {
+          rows.push([
+            transfer.sku,
+            transfer.descricao,
+            transfer.classe || '',
+            transfer.faseProduto || '',
+            transfer.priority === 'high' ? 'Alta' : 'Média',
+            fromStore.loja,
+            fromStore.estoqueAtual,
+            fromStore.coberturaProjetada,
+            toStore.loja,
+            toStore.estoqueAtual,
+            toStore.coberturaProjetada,
+          ])
+        })
+      })
+    })
+
+    const sheetData = [headers, ...rows]
+    const worksheet = XLSX.utils.aoa_to_sheet(sheetData)
+
+    // Ativa autofilter
+    const lastCol = XLSX.utils.encode_col(headers.length - 1)
+    const lastRow = sheetData.length
+    worksheet['!autofilter'] = { ref: `A1:${lastCol}${lastRow}` }
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transferencias')
+
+    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `transferencias_${new Date().toISOString().split('T')[0]}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   if (transfers.length === 0) {
     return (
       <motion.div
@@ -362,6 +424,20 @@ function TransferSuggestions({ transfers }) {
                 ))}
               </select>
             )}
+
+            {/* Export Button */}
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg
+                bg-emerald-500/20 border border-emerald-500/30
+                text-sm font-medium text-emerald-400
+                hover:bg-emerald-500/30 transition-colors
+              "
+              title={`Exportar ${filteredTransfers.length} transferências`}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
           </div>
         </div>
       </div>
