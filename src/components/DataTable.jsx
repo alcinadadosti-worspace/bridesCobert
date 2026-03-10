@@ -20,6 +20,7 @@ import {
   Store,
   Download,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 const PAGE_SIZES = [10, 25, 50, 100]
 
@@ -231,14 +232,39 @@ function DataTable({ items, targetCoverage }) {
       item.excessDays || 0,
     ])
 
-    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
+    // Constrói os dados da planilha a partir dos headers e rows (preserva linhas filtradas)
+    const sheetData = [
+      headers,
+      ...rows.map((row) =>
+        row.map((cell) => {
+          if (typeof cell === 'string') {
+            const cleaned = cell.replace(/\s+/g, '').replace(',', '.')
+            const num = Number(cleaned)
+            if (!Number.isNaN(num) && /^[-+]?\d+(?:[.,]\d+)?$/.test(cell)) return num
+          }
+          return cell
+        })
+      ),
+    ]
 
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const worksheet = XLSX.utils.aoa_to_sheet(sheetData)
+    // Ativa autofilter no intervalo da planilha
+    const lastCol = XLSX.utils.encode_col(headers.length - 1)
+    const lastRow = sheetData.length
+    worksheet['!autofilter'] = { ref: `A1:${lastCol}${lastRow}` }
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Analise')
+
+    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `analise_estoque_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `analise_estoque_${new Date().toISOString().split('T')[0]}.xlsx`
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
     URL.revokeObjectURL(url)
   }
 
