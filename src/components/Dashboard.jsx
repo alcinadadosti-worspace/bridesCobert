@@ -1,11 +1,123 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2 } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
+
+function CoverageBar({ value, target, max }) {
+  const cappedValue = Math.min(value, max)
+  const pct = Math.round((cappedValue / max) * 100)
+  const targetPct = Math.round((target / max) * 100)
+  const color = value === 0 ? 'bg-gray-600' :
+    value < target * 0.75 ? 'bg-red-500' :
+    value < target ? 'bg-amber-500' :
+    value > target * 2 ? 'bg-purple-500' :
+    'bg-emerald-500'
+
+  return (
+    <div className="relative h-2 bg-white/10 rounded-full overflow-visible">
+      <div
+        className={`h-full rounded-full transition-all duration-700 ${color}`}
+        style={{ width: `${pct}%` }}
+      />
+      {/* Target marker */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/40 rounded-full"
+        style={{ left: `${targetPct}%` }}
+      />
+    </div>
+  )
+}
+
+function StoreCoverageSection({ summary, targetCoverage }) {
+  const stores = Object.entries(summary.storeStats).sort((a, b) => a[0].localeCompare(b[0]))
+  const maxCoverage = Math.max(targetCoverage * 2.5, ...stores.map(([, s]) => s.avgCoverage))
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="glass rounded-2xl p-6"
+    >
+      <div className="flex items-center gap-2 mb-5">
+        <BarChart2 className="w-5 h-5 text-cyan-400" />
+        <h3 className="text-lg font-semibold text-white">Cobertura por Loja</h3>
+        <span className="text-xs text-gray-500 ml-1">(meta: {targetCoverage}d)</span>
+      </div>
+
+      {/* Overall */}
+      <div className="mb-5 p-4 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-gray-400">Geral — todas as lojas</span>
+          <span className={`text-lg font-bold ${
+            summary.avgCoverage < targetCoverage * 0.75 ? 'text-red-400' :
+            summary.avgCoverage < targetCoverage ? 'text-amber-400' :
+            summary.avgCoverage > targetCoverage * 2 ? 'text-purple-400' :
+            'text-emerald-400'
+          }`}>
+            {summary.avgCoverage}d
+          </span>
+        </div>
+        <CoverageBar value={summary.avgCoverage} target={targetCoverage} max={maxCoverage} />
+        <p className="text-xs text-gray-500 mt-1">{summary.totalSKUs} SKUs · {stores.length} lojas</p>
+      </div>
+
+      {/* Per store */}
+      <div className="space-y-3">
+        {stores.map(([loja, stats]) => (
+          <div key={loja}>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm text-gray-300 truncate">{loja}</span>
+                <span className="text-xs text-gray-600 shrink-0">{stats.total} SKUs</span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 ml-2">
+                <span className="text-xs text-gray-500">
+                  <span className="text-red-400">{stats.needToBuy}</span>
+                  {' / '}
+                  <span className="text-emerald-400">{stats.healthy}</span>
+                  {' / '}
+                  <span className="text-purple-400">{stats.hasExcess}</span>
+                </span>
+                <span className={`text-sm font-semibold w-14 text-right ${
+                  stats.avgCoverage === 0 ? 'text-gray-600' :
+                  stats.avgCoverage < targetCoverage * 0.75 ? 'text-red-400' :
+                  stats.avgCoverage < targetCoverage ? 'text-amber-400' :
+                  stats.avgCoverage > targetCoverage * 2 ? 'text-purple-400' :
+                  'text-emerald-400'
+                }`}>
+                  {stats.avgCoverage}d
+                </span>
+              </div>
+            </div>
+            <CoverageBar value={stats.avgCoverage} target={targetCoverage} max={maxCoverage} />
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-white/5">
+        <span className="text-xs text-gray-600 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Abaixo de 75% da meta
+        </span>
+        <span className="text-xs text-gray-600 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> 75–100% da meta
+        </span>
+        <span className="text-xs text-gray-600 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Dentro da meta
+        </span>
+        <span className="text-xs text-gray-600 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Acima de 200% da meta
+        </span>
+        <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso</span>
+      </div>
+    </motion.div>
+  )
+}
 
 function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
   const [activeTab, setActiveTab] = useState('table')
@@ -97,6 +209,11 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
         {/* Summary Cards */}
         <section className="mb-8">
           <SummaryCards summary={summary} />
+        </section>
+
+        {/* Coverage by store */}
+        <section className="mb-8">
+          <StoreCoverageSection summary={summary} targetCoverage={targetCoverage} />
         </section>
 
         {/* Urgency and Excess breakdown */}

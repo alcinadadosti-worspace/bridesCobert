@@ -310,13 +310,21 @@ export function analyzeData(data, targetCoverage) {
         total: 0,
         needToBuy: 0,
         healthy: 0,
-        hasExcess: 0
+        hasExcess: 0,
+        totalCoverage: 0,
+        avgCoverage: 0
       }
     }
     storeStats[item.loja].total++
+    storeStats[item.loja].totalCoverage += item.coberturaProjetada
     if (item.needsToBuy) storeStats[item.loja].needToBuy++
     else if (item.hasExcess) storeStats[item.loja].hasExcess++
     else storeStats[item.loja].healthy++
+  })
+
+  Object.values(storeStats).forEach(s => {
+    s.avgCoverage = s.total > 0 ? Math.round((s.totalCoverage / s.total) * 10) / 10 : 0
+    delete s.totalCoverage
   })
 
   // Encontrar lojas únicas
