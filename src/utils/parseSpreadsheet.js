@@ -66,6 +66,112 @@ function getStoreName(pdv) {
   return STORE_NAMES[pdv] || `PDV ${pdv}`
 }
 
+function processSheet(jsonData, sheetIndex) {
+  if (jsonData.length < 2) return []
+
+  const headers = jsonData[0]
+
+  const columnIndices = {
+    sku: findColumnIndex(headers, columnMappings.sku),
+    descricao: findColumnIndex(headers, columnMappings.descricao),
+    categoria: findColumnIndex(headers, columnMappings.categoria),
+    classe: findColumnIndex(headers, columnMappings.classe),
+    faseProduto: findColumnIndex(headers, columnMappings.faseProduto),
+    pdv: findColumnIndex(headers, columnMappings.pdv),
+    estoqueAtual: findColumnIndex(headers, columnMappings.estoqueAtual),
+    estoqueTransito: findColumnIndex(headers, columnMappings.estoqueTransito),
+    pedidoPendente: findColumnIndex(headers, columnMappings.pedidoPendente),
+    coberturaAtual: findColumnIndex(headers, columnMappings.coberturaAtual),
+    coberturaProjetada: findColumnIndex(headers, columnMappings.coberturaProjetada),
+    ddvPrevisto: findColumnIndex(headers, columnMappings.ddvPrevisto)
+  }
+
+  const essentialColumns = ['sku', 'estoqueAtual']
+  const missingColumns = essentialColumns.filter(col => columnIndices[col] === -1)
+  if (missingColumns.length > 0) return []
+
+  const processedData = []
+
+  for (let i = 1; i < jsonData.length; i++) {
+    const row = jsonData[i]
+
+    if (!row || row.length === 0 || !row[columnIndices.sku]) continue
+
+    const categoria = columnIndices.categoria !== -1
+      ? row[columnIndices.categoria]?.toString() || 'Sem categoria'
+      : 'Sem categoria'
+
+    const normalizedCategoria = normalizeString(categoria)
+    if (EXCLUDED_CATEGORIES.some(exc => normalizeString(exc) === normalizedCategoria)) {
+      continue
+    }
+
+    const estoqueAtual = parseNumber(row[columnIndices.estoqueAtual])
+    const estoqueTransito = columnIndices.estoqueTransito !== -1
+      ? parseNumber(row[columnIndices.estoqueTransito])
+      : 0
+    const pedidoPendente = columnIndices.pedidoPendente !== -1
+      ? parseNumber(row[columnIndices.pedidoPendente])
+      : 0
+    const coberturaAtual = columnIndices.coberturaAtual !== -1
+      ? parseNumber(row[columnIndices.coberturaAtual])
+      : 0
+    const ddvPrevisto = columnIndices.ddvPrevisto !== -1
+      ? parseNumber(row[columnIndices.ddvPrevisto])
+      : 0
+    const estoqueTotal = estoqueAtual + estoqueTransito + pedidoPendente
+
+    // Cobertura projetada: usa coluna da planilha, depois DDV, depois cobertura atual
+    let coberturaProjetada = columnIndices.coberturaProjetada !== -1
+      ? parseNumber(row[columnIndices.coberturaProjetada])
+      : 0
+
+    if (coberturaProjetada === 0) {
+      if (ddvPrevisto > 0 && estoqueTotal > 0) {
+        coberturaProjetada = estoqueTotal / ddvPrevisto
+      } else if (coberturaAtual > 0 && estoqueAtual > 0) {
+        const velocidadeVenda = estoqueAtual / coberturaAtual
+        coberturaProjetada = estoqueTotal / velocidadeVenda
+      } else {
+        coberturaProjetada = coberturaAtual
+      }
+    }
+
+    const pdv = columnIndices.pdv !== -1
+      ? parseNumber(row[columnIndices.pdv])
+      : 0
+    const loja = getStoreName(pdv)
+
+    const classe = columnIndices.classe !== -1
+      ? row[columnIndices.classe]?.toString() || ''
+      : ''
+    const faseProduto = columnIndices.faseProduto !== -1
+      ? row[columnIndices.faseProduto]?.toString() || ''
+      : ''
+
+    processedData.push({
+      id: `${sheetIndex}-${i}`,
+      sku: row[columnIndices.sku]?.toString() || '',
+      descricao: columnIndices.descricao !== -1
+        ? row[columnIndices.descricao]?.toString() || 'Sem descrição'
+        : 'Sem descrição',
+      categoria,
+      classe,
+      faseProduto,
+      pdv,
+      loja,
+      estoqueAtual,
+      estoqueTransito,
+      pedidoPendente,
+      ddvPrevisto: Math.round(ddvPrevisto * 100) / 100,
+      coberturaAtual: Math.round(coberturaAtual * 10) / 10,
+      coberturaProjetada: Math.round(coberturaProjetada * 10) / 10
+    })
+  }
+
+  return processedData
+}
+
 export function parseSpreadsheet(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -75,133 +181,26 @@ export function parseSpreadsheet(file) {
         const data = new Uint8Array(e.target.result)
         const workbook = XLSX.read(data, { type: 'array' })
 
-        // Pega a primeira planilha
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-
-        // Converte para JSON com defval para garantir todas as colunas
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' })
-
-        if (jsonData.length < 2) {
-          reject(new Error('A planilha deve ter pelo menos um cabeçalho e uma linha de dados'))
+        if (workbook.SheetNames.length === 0) {
+          reject(new Error('Arquivo sem planilhas válidas'))
           return
         }
 
-        const headers = jsonData[0]
-
-        // Encontra os índices das colunas
-        const columnIndices = {
-          sku: findColumnIndex(headers, columnMappings.sku),
-          descricao: findColumnIndex(headers, columnMappings.descricao),
-          categoria: findColumnIndex(headers, columnMappings.categoria),
-          classe: findColumnIndex(headers, columnMappings.classe),
-          faseProduto: findColumnIndex(headers, columnMappings.faseProduto),
-          pdv: findColumnIndex(headers, columnMappings.pdv),
-          estoqueAtual: findColumnIndex(headers, columnMappings.estoqueAtual),
-          estoqueTransito: findColumnIndex(headers, columnMappings.estoqueTransito),
-          pedidoPendente: findColumnIndex(headers, columnMappings.pedidoPendente),
-          coberturaAtual: findColumnIndex(headers, columnMappings.coberturaAtual),
-          coberturaProjetada: findColumnIndex(headers, columnMappings.coberturaProjetada),
-          ddvPrevisto: findColumnIndex(headers, columnMappings.ddvPrevisto)
+        // Processa todas as abas e combina os dados
+        const allData = []
+        for (let s = 0; s < workbook.SheetNames.length; s++) {
+          const worksheet = workbook.Sheets[workbook.SheetNames[s]]
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' })
+          const sheetData = processSheet(jsonData, s)
+          allData.push(...sheetData)
         }
 
-        // Verifica se encontrou as colunas essenciais
-        const essentialColumns = ['sku', 'estoqueAtual']
-        const missingColumns = essentialColumns.filter(col => columnIndices[col] === -1)
-
-        if (missingColumns.length > 0) {
-          reject(new Error(`Colunas obrigatórias não encontradas: ${missingColumns.join(', ')}. Verifique se sua planilha contém as colunas: SKU, Estoque Atual`))
+        if (allData.length === 0) {
+          reject(new Error('Nenhum dado válido encontrado na planilha (verifique se há itens fora de SUPORTE À VENDA e se as colunas SKU e Estoque Atual existem)'))
           return
         }
 
-        // Processa os dados
-        const processedData = []
-
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i]
-
-          // Pula linhas vazias
-          if (!row || row.length === 0 || !row[columnIndices.sku]) continue
-
-          // Pega a categoria
-          const categoria = columnIndices.categoria !== -1
-            ? row[columnIndices.categoria]?.toString() || 'Sem categoria'
-            : 'Sem categoria'
-
-          // Filtra categorias excluídas (SUPORTE À VENDA)
-          const normalizedCategoria = normalizeString(categoria)
-          if (EXCLUDED_CATEGORIES.some(exc => normalizeString(exc) === normalizedCategoria)) {
-            continue
-          }
-
-          const estoqueAtual = parseNumber(row[columnIndices.estoqueAtual])
-          const estoqueTransito = columnIndices.estoqueTransito !== -1
-            ? parseNumber(row[columnIndices.estoqueTransito])
-            : 0
-          const pedidoPendente = columnIndices.pedidoPendente !== -1
-            ? parseNumber(row[columnIndices.pedidoPendente])
-            : 0
-          const coberturaAtual = columnIndices.coberturaAtual !== -1
-            ? parseNumber(row[columnIndices.coberturaAtual])
-            : 0
-
-          // Cobertura projetada
-          let coberturaProjetada
-          if (columnIndices.coberturaProjetada !== -1) {
-            coberturaProjetada = parseNumber(row[columnIndices.coberturaProjetada])
-          } else if (coberturaAtual > 0 && estoqueAtual > 0) {
-            const velocidadeVenda = estoqueAtual / coberturaAtual
-            const estoqueTotal = estoqueAtual + estoqueTransito + pedidoPendente
-            coberturaProjetada = estoqueTotal / velocidadeVenda
-          } else {
-            coberturaProjetada = coberturaAtual
-          }
-
-          // PDV / Loja
-          const pdv = columnIndices.pdv !== -1
-            ? parseNumber(row[columnIndices.pdv])
-            : 0
-          const loja = getStoreName(pdv)
-
-          // Classe e Fase
-          const classe = columnIndices.classe !== -1
-            ? row[columnIndices.classe]?.toString() || ''
-            : ''
-          const faseProduto = columnIndices.faseProduto !== -1
-            ? row[columnIndices.faseProduto]?.toString() || ''
-            : ''
-
-          // DDV
-          const ddvPrevisto = columnIndices.ddvPrevisto !== -1
-            ? parseNumber(row[columnIndices.ddvPrevisto])
-            : 0
-
-          processedData.push({
-            id: i,
-            sku: row[columnIndices.sku]?.toString() || '',
-            descricao: columnIndices.descricao !== -1
-              ? row[columnIndices.descricao]?.toString() || 'Sem descrição'
-              : 'Sem descrição',
-            categoria,
-            classe,
-            faseProduto,
-            pdv,
-            loja,
-            estoqueAtual,
-            estoqueTransito,
-            pedidoPendente,
-            ddvPrevisto: Math.round(ddvPrevisto * 100) / 100,
-            coberturaAtual: Math.round(coberturaAtual * 10) / 10,
-            coberturaProjetada: Math.round(coberturaProjetada * 10) / 10
-          })
-        }
-
-        if (processedData.length === 0) {
-          reject(new Error('Nenhum dado válido encontrado na planilha (verifique se há itens fora de SUPORTE À VENDA)'))
-          return
-        }
-
-        resolve(processedData)
+        resolve(allData)
       } catch (error) {
         reject(new Error(`Erro ao processar planilha: ${error.message}`))
       }

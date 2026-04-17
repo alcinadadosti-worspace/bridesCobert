@@ -369,7 +369,7 @@ function TransferSuggestions({ transfers }) {
             </div>
 
             {/* Filter Loja */}
-            {lojas.length > 1 && (
+            {lojas.length > 0 && (
               <select
                 value={filterLoja}
                 onChange={(e) => setFilterLoja(e.target.value)}
@@ -388,7 +388,7 @@ function TransferSuggestions({ transfers }) {
             )}
 
             {/* Filter Classe */}
-            {classes.length > 1 && (
+            {classes.length > 0 && (
               <select
                 value={filterClasse}
                 onChange={(e) => setFilterClasse(e.target.value)}
@@ -407,7 +407,7 @@ function TransferSuggestions({ transfers }) {
             )}
 
             {/* Filter Fase */}
-            {fases.length > 1 && (
+            {fases.length > 0 && (
               <select
                 value={filterFase}
                 onChange={(e) => setFilterFase(e.target.value)}

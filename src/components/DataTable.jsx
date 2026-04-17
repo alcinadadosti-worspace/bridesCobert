@@ -351,7 +351,7 @@ function DataTable({ items, targetCoverage }) {
             )}
 
             {/* Filter Classe */}
-            {classes.length > 1 && (
+            {classes.length > 0 && (
               <select
                 value={filterClasse}
                 onChange={(e) => {
@@ -373,7 +373,7 @@ function DataTable({ items, targetCoverage }) {
             )}
 
             {/* Filter Fase */}
-            {fases.length > 1 && (
+            {fases.length > 0 && (
               <select
                 value={filterFase}
                 onChange={(e) => {
