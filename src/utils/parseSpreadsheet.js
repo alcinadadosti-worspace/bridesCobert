@@ -7,6 +7,7 @@ export const STORE_NAMES = {
   24670: 'Loja Coruripe',
   24671: 'Loja Teotonio Vilela',
   24303: 'Loja São Sebastião',
+  24617: 'Loja Sustentável Palmeira',
   1515: 'VD Palmeira dos Índios',
   13707: 'VD Penedo',
   13706: 'VD Palmeira'
