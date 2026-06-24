@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2 } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
+import ClassCoverage from './ClassCoverage'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
 
@@ -311,15 +312,31 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('classes')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeTab === 'classes'
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'}
+              `}
+            >
+              <Layers className="w-4 h-4" />
+              Cobertura por Classe
+            </button>
           </div>
         </section>
 
         {/* Content based on active tab */}
         <section>
-          {activeTab === 'table' ? (
+          {activeTab === 'table' && (
             <DataTable items={items} targetCoverage={targetCoverage} />
-          ) : (
+          )}
+          {activeTab === 'transfers' && (
             <TransferSuggestions transfers={transfers} />
+          )}
+          {activeTab === 'classes' && (
+            <ClassCoverage items={items} targetCoverage={targetCoverage} />
           )}
         </section>
       </main>
