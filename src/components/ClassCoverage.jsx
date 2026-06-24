@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Layers, Grid3x3 } from 'lucide-react'
+import { Layers, Grid3x3, ChevronDown } from 'lucide-react'
 
 // Cores por classe (mesmo padrão usado na tabela de dados)
 const CLASS_COLORS = {
@@ -53,9 +53,22 @@ function sortClasses(a, b) {
 }
 
 function ClassCoverage({ items, targetCoverage }) {
+  const [selectedStore, setSelectedStore] = useState('all')
+
+  const stores = useMemo(
+    () => [...new Set(items.map(i => i.loja))].sort(),
+    [items]
+  )
+
+  // Cards reagem ao filtro de loja; a matriz abaixo sempre mostra todas as lojas
+  const filteredItems = useMemo(
+    () => selectedStore === 'all' ? items : items.filter(i => i.loja === selectedStore),
+    [items, selectedStore]
+  )
+
   const classData = useMemo(() => {
     const groups = {}
-    items.forEach(item => {
+    filteredItems.forEach(item => {
       const key = item.classe || 'Sem classe'
       if (!groups[key]) {
         groups[key] = {
@@ -88,10 +101,9 @@ function ClassCoverage({ items, targetCoverage }) {
         avgDDV: g.ddvCount ? Math.round((g.sumDDV / g.ddvCount) * 100) / 100 : 0,
       }))
       .sort((a, b) => sortClasses(a.classe, b.classe))
-  }, [items])
+  }, [filteredItems])
 
   const matrix = useMemo(() => {
-    const stores = [...new Set(items.map(i => i.loja))].sort()
     const cells = {}
     items.forEach(item => {
       const c = item.classe || 'Sem classe'
@@ -105,7 +117,7 @@ function ClassCoverage({ items, targetCoverage }) {
       return cell ? Math.round((cell.sum / cell.count) * 10) / 10 : null
     }
     return { stores, get }
-  }, [items])
+  }, [items, stores])
 
   const maxCoverage = Math.max(
     targetCoverage * 2.5,
@@ -122,10 +134,32 @@ function ClassCoverage({ items, targetCoverage }) {
         animate={{ opacity: 1, y: 0 }}
         className="glass rounded-2xl p-6"
       >
-        <div className="flex items-center gap-2 mb-5">
-          <Layers className="w-5 h-5 text-cyan-400" />
-          <h3 className="text-lg font-semibold text-white">Cobertura por Classe</h3>
-          <span className="text-xs text-gray-500 ml-1">(meta: {targetCoverage}d)</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-lg font-semibold text-white">Cobertura por Classe</h3>
+            <span className="text-xs text-gray-500 ml-1">
+              (meta: {targetCoverage}d{selectedStore !== 'all' ? ` · ${selectedStore}` : ''})
+            </span>
+          </div>
+          <div className="relative">
+            <select
+              value={selectedStore}
+              onChange={(e) => setSelectedStore(e.target.value)}
+              className="pl-3 pr-9 py-2 text-sm text-white
+                bg-[#1a1a2e] border border-white/10 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                appearance-none cursor-pointer
+                [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+              "
+            >
+              <option value="all">Todas as lojas</option>
+              {stores.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
