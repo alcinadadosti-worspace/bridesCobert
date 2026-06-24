@@ -207,6 +207,7 @@ function DataTable({ items, targetCoverage }) {
       'Estoque Atual',
       'Em Trânsito',
       'Pedido Pendente',
+      'DDV Previsto',
       'Cobertura Atual',
       'Cobertura Projetada',
       'Status',
@@ -225,6 +226,7 @@ function DataTable({ items, targetCoverage }) {
       item.estoqueAtual,
       item.estoqueTransito,
       item.pedidoPendente,
+      item.ddvPrevisto,
       item.coberturaAtual,
       item.coberturaProjetada,
       item.status,
@@ -421,6 +423,8 @@ function DataTable({ items, targetCoverage }) {
                 <option value="estoqueAtual-desc">Estoque: Maior → Menor</option>
                 <option value="coberturaProjetada-asc">Cobertura: Menor → Maior</option>
                 <option value="coberturaProjetada-desc">Cobertura: Maior → Menor</option>
+                <option value="ddvPrevisto-desc">DDV: Maior → Menor</option>
+                <option value="ddvPrevisto-asc">DDV: Menor → Maior</option>
                 <option value="sku-asc">SKU: A → Z</option>
                 <option value="sku-desc">SKU: Z → A</option>
               </select>
@@ -494,6 +498,14 @@ function DataTable({ items, targetCoverage }) {
               >
                 <div className="flex items-center gap-1">
                   Pend. {getSortIcon('pedidoPendente')}
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort('ddvPrevisto')}
+                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+              >
+                <div className="flex items-center gap-1">
+                  DDV {getSortIcon('ddvPrevisto')}
                 </div>
               </th>
               <th
@@ -587,6 +599,13 @@ function DataTable({ items, targetCoverage }) {
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-400">
                     {item.pedidoPendente}
+                  </td>
+                  <td className="px-3 py-3 text-sm">
+                    {item.ddvPrevisto > 0 ? (
+                      <span className="text-violet-300 font-medium">{item.ddvPrevisto}</span>
+                    ) : (
+                      <span className="text-gray-600" title="Sem DDV previsto (lançamento)">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-300">
                     {item.coberturaAtual}d
