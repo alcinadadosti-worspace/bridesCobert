@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
 import ClassCoverage from './ClassCoverage'
+import EstoqueParado from './EstoqueParado'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
 
@@ -324,6 +325,18 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
               <Layers className="w-4 h-4" />
               Cobertura por Classe
             </button>
+            <button
+              onClick={() => setActiveTab('parado')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeTab === 'parado'
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'}
+              `}
+            >
+              <PackageX className="w-4 h-4" />
+              Estoque Parado
+            </button>
           </div>
         </section>
 
@@ -337,6 +350,9 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
           )}
           {activeTab === 'classes' && (
             <ClassCoverage items={items} targetCoverage={targetCoverage} />
+          )}
+          {activeTab === 'parado' && (
+            <EstoqueParado items={items} targetCoverage={targetCoverage} />
           )}
         </section>
       </main>
