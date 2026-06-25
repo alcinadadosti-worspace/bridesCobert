@@ -29,7 +29,8 @@ const columnMappings = {
   pedidoPendente: ['pedido pendente', 'pedido_pendente', 'pedidopendente', 'pending', 'pendente', 'pending_order', 'pedidos'],
   coberturaAtual: ['cobertura atual', 'cobertura_atual', 'coberturaatual', 'coverage', 'current_coverage', 'dias_cobertura'],
   coberturaProjetada: ['cobertura projetada', 'cobertura_projetada', 'coberturaprojetada', 'projected_coverage', 'projecao', 'projeção'],
-  ddvPrevisto: ['ddv previsto', 'ddv_previsto', 'ddv', 'demanda_diaria', 'demanda diaria']
+  ddvPrevisto: ['ddv previsto', 'ddv_previsto', 'ddv', 'demanda_diaria', 'demanda diaria'],
+  dataLancamento: ['lancamento', 'lançamento', 'data lancamento', 'data_lancamento', 'dt lancamento']
 }
 
 function normalizeString(str) {
@@ -84,7 +85,8 @@ function processSheet(jsonData, sheetIndex) {
     pedidoPendente: findColumnIndex(headers, columnMappings.pedidoPendente),
     coberturaAtual: findColumnIndex(headers, columnMappings.coberturaAtual),
     coberturaProjetada: findColumnIndex(headers, columnMappings.coberturaProjetada),
-    ddvPrevisto: findColumnIndex(headers, columnMappings.ddvPrevisto)
+    ddvPrevisto: findColumnIndex(headers, columnMappings.ddvPrevisto),
+    dataLancamento: findColumnIndex(headers, columnMappings.dataLancamento)
   }
 
   const essentialColumns = ['sku', 'estoqueAtual']
@@ -120,6 +122,13 @@ function processSheet(jsonData, sheetIndex) {
     const ddvPrevisto = columnIndices.ddvPrevisto !== -1
       ? parseNumber(row[columnIndices.ddvPrevisto])
       : 0
+    // Data de lançamento no formato AAAAMM (ex.: 202606 = jun/2026); fora da faixa = sem data
+    const dataLancamentoNum = columnIndices.dataLancamento !== -1
+      ? parseNumber(row[columnIndices.dataLancamento])
+      : 0
+    const dataLancamento = (dataLancamentoNum >= 200001 && dataLancamentoNum <= 210012)
+      ? dataLancamentoNum
+      : null
     const estoqueTotal = estoqueAtual + estoqueTransito + pedidoPendente
 
     // Cobertura projetada: usa coluna da planilha, depois DDV, depois cobertura atual
@@ -165,6 +174,7 @@ function processSheet(jsonData, sheetIndex) {
       estoqueTransito,
       pedidoPendente,
       ddvPrevisto: Math.round(ddvPrevisto * 100) / 100,
+      dataLancamento,
       coberturaAtual: Math.round(coberturaAtual * 10) / 10,
       coberturaProjetada: Math.round(coberturaProjetada * 10) / 10
     })
