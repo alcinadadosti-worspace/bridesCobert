@@ -210,6 +210,7 @@ function DataTable({ items, targetCoverage }) {
       'DDV Previsto',
       'Cobertura Atual',
       'Cobertura Projetada',
+      'Pedido Sugerido',
       'Status',
       'Gap de Cobertura',
       'Dias Excesso',
@@ -229,6 +230,7 @@ function DataTable({ items, targetCoverage }) {
       item.ddvPrevisto,
       item.coberturaAtual,
       item.coberturaProjetada,
+      item.pedidoSugerido,
       item.status,
       item.coverageGap,
       item.excessDays || 0,
@@ -423,6 +425,8 @@ function DataTable({ items, targetCoverage }) {
                 <option value="estoqueAtual-desc">Estoque: Maior → Menor</option>
                 <option value="coberturaProjetada-asc">Cobertura: Menor → Maior</option>
                 <option value="coberturaProjetada-desc">Cobertura: Maior → Menor</option>
+                <option value="pedidoSugerido-desc">Pedido: Maior → Menor</option>
+                <option value="pedidoSugerido-asc">Pedido: Menor → Maior</option>
                 <option value="ddvPrevisto-desc">DDV: Maior → Menor</option>
                 <option value="ddvPrevisto-asc">DDV: Menor → Maior</option>
                 <option value="sku-asc">SKU: A → Z</option>
@@ -454,7 +458,7 @@ function DataTable({ items, targetCoverage }) {
             <tr className="border-b border-white/5">
               <th
                 onClick={() => handleSort('sku')}
-                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[9%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   SKU {getSortIcon('sku')}
@@ -462,7 +466,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('descricao')}
-                className="w-[18%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[17%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Produto {getSortIcon('descricao')}
@@ -470,7 +474,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('loja')}
-                className="w-[12%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[11%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Loja {getSortIcon('loja')}
@@ -478,7 +482,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('estoqueAtual')}
-                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[7%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Estoque {getSortIcon('estoqueAtual')}
@@ -486,7 +490,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('estoqueTransito')}
-                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[7%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Trâns. {getSortIcon('estoqueTransito')}
@@ -494,7 +498,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('pedidoPendente')}
-                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[7%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Pend. {getSortIcon('pedidoPendente')}
@@ -502,7 +506,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('ddvPrevisto')}
-                className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[7%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   DDV {getSortIcon('ddvPrevisto')}
@@ -510,7 +514,7 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('coberturaAtual')}
-                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[9%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Cob. Atual {getSortIcon('coberturaAtual')}
@@ -518,13 +522,22 @@ function DataTable({ items, targetCoverage }) {
               </th>
               <th
                 onClick={() => handleSort('coberturaProjetada')}
-                className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                className="w-[9%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
               >
                 <div className="flex items-center gap-1">
                   Cob. Proj. {getSortIcon('coberturaProjetada')}
                 </div>
               </th>
-              <th className="w-[10%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
+              <th
+                onClick={() => handleSort('pedidoSugerido')}
+                className="w-[9%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
+                title="Pedido de abastecimento sugerido (DDV × (cobertura + prazo) − estoque atual)"
+              >
+                <div className="flex items-center gap-1">
+                  Pedido {getSortIcon('pedidoSugerido')}
+                </div>
+              </th>
+              <th className="w-[8%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
                 Status
               </th>
             </tr>
@@ -624,6 +637,17 @@ function DataTable({ items, targetCoverage }) {
                     `}>
                       {item.coberturaProjetada}d
                     </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    {item.pedidoSugerido > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg
+                        bg-primary-500/15 border border-primary-500/25 text-sm font-bold text-primary-300">
+                        <ShoppingCart className="w-3 h-3" />
+                        {item.pedidoSugerido.toLocaleString('pt-BR')}
+                      </span>
+                    ) : (
+                      <span className="text-gray-600">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-3">
                     <StatusBadge status={item.status} urgency={item.urgency} excessLevel={item.excessLevel} />

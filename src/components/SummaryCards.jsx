@@ -27,7 +27,7 @@ function SummaryCards({ summary }) {
     {
       title: 'Precisam de Compra',
       value: summary.needToBuy,
-      subtitle: `${((summary.needToBuy / summary.totalSKUs) * 100).toFixed(1)}% do total`,
+      subtitle: `${(summary.unidadesComprar || 0).toLocaleString('pt-BR')} unidades a comprar`,
       icon: AlertTriangle,
       gradient: 'from-amber-500/20 to-orange-500/20',
       iconColor: 'text-amber-400',

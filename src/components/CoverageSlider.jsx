@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { Target, Calendar } from 'lucide-react'
+import { Target, Calendar, Truck } from 'lucide-react'
 
-function CoverageSlider({ value, onChange, compact = false }) {
+function CoverageSlider({ value, onChange, leadTime = 15, onLeadTimeChange, compact = false }) {
   const handleSliderChange = (e) => {
     onChange(parseInt(e.target.value, 10))
   }
@@ -13,21 +13,31 @@ function CoverageSlider({ value, onChange, compact = false }) {
     }
   }
 
+  const handleLeadChange = (e) => {
+    const newValue = parseInt(e.target.value, 10)
+    if (!isNaN(newValue) && newValue >= 0 && newValue <= 90) {
+      onLeadTimeChange?.(newValue)
+    }
+  }
+
+  const totalDias = value + leadTime
+
   if (compact) {
     return (
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-gray-400">
-          <Target className="w-4 h-4" />
-          <span className="text-sm font-medium">Meta:</span>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {/* Cobertura desejada */}
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-gray-400">
+            <Target className="w-4 h-4" />
+            <span className="text-sm font-medium">Cobertura:</span>
+          </div>
           <input
             type="range"
             min="0"
             max="365"
             value={value}
             onChange={handleSliderChange}
-            className="w-32 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+            className="w-28 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
               [&::-webkit-slider-thumb]:appearance-none
               [&::-webkit-slider-thumb]:w-4
               [&::-webkit-slider-thumb]:h-4
@@ -47,14 +57,41 @@ function CoverageSlider({ value, onChange, compact = false }) {
               onChange={handleInputChange}
               min="0"
               max="365"
-              className="w-16 px-2 py-1 text-center text-sm font-semibold text-white
+              className="w-14 px-2 py-1 text-center text-sm font-semibold text-white
                 bg-white/5 border border-white/10 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
               "
             />
-            <span className="text-sm text-gray-400">dias</span>
+            <span className="text-sm text-gray-400">d</span>
           </div>
         </div>
+
+        {/* Prazo de entrega */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-gray-400">
+            <Truck className="w-4 h-4" />
+            <span className="text-sm font-medium">Prazo:</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              value={leadTime}
+              onChange={handleLeadChange}
+              min="0"
+              max="90"
+              className="w-14 px-2 py-1 text-center text-sm font-semibold text-white
+                bg-white/5 border border-white/10 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50
+              "
+            />
+            <span className="text-sm text-gray-400">d</span>
+          </div>
+        </div>
+
+        {/* Horizonte do pedido */}
+        <span className="text-xs text-gray-500">
+          Pedido cobre <span className="text-cyan-300 font-semibold">{totalDias}d</span>
+        </span>
       </div>
     )
   }
@@ -73,8 +110,8 @@ function CoverageSlider({ value, onChange, compact = false }) {
               <Target className="w-5 h-5 text-primary-400" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">Cobertura Alvo</h3>
-              <p className="text-xs text-gray-400">Defina sua meta em dias</p>
+              <h3 className="text-sm font-semibold text-white">Cobertura desejada</h3>
+              <p className="text-xs text-gray-400">Dias de estoque que quer manter</p>
             </div>
           </div>
 
@@ -140,6 +177,45 @@ function CoverageSlider({ value, onChange, compact = false }) {
           <span>180 dias</span>
           <span>365 dias</span>
         </div>
+
+        {/* Prazo de entrega */}
+        <div className="flex items-center justify-between mt-5 pt-5 border-t border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+              <Truck className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Prazo de entrega</h3>
+              <p className="text-xs text-gray-400">Dias até a mercadoria chegar</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={leadTime}
+              onChange={handleLeadChange}
+              min="0"
+              max="90"
+              className="w-20 px-3 py-2 text-center text-lg font-bold text-white
+                bg-white/5 border border-white/10 rounded-xl
+                focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50
+                transition-all duration-200
+              "
+            />
+            <div className="flex items-center gap-1 text-gray-400">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm">dias</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Horizonte total do pedido */}
+        <p className="text-xs text-gray-400 mt-4 text-center">
+          O pedido de compra cobre{' '}
+          <span className="text-cyan-300 font-semibold">{totalDias} dias</span>{' '}
+          (cobertura + prazo)
+        </p>
       </div>
     </motion.div>
   )

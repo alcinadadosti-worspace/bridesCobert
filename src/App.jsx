@@ -6,7 +6,8 @@ import Dashboard from './components/Dashboard'
 
 function App() {
   const [data, setData] = useState(null)
-  const [targetCoverage, setTargetCoverage] = useState(90)
+  const [targetCoverage, setTargetCoverage] = useState(65)
+  const [leadTime, setLeadTime] = useState(15)
 
   const handleDataLoaded = (parsedData) => {
     setData(parsedData)
@@ -28,6 +29,8 @@ function App() {
               onDataLoaded={handleDataLoaded}
               targetCoverage={targetCoverage}
               setTargetCoverage={setTargetCoverage}
+              leadTime={leadTime}
+              setLeadTime={setLeadTime}
             />
           ) : (
             <Dashboard
@@ -35,6 +38,8 @@ function App() {
               data={data}
               targetCoverage={targetCoverage}
               setTargetCoverage={setTargetCoverage}
+              leadTime={leadTime}
+              setLeadTime={setLeadTime}
               onReset={handleReset}
             />
           )}

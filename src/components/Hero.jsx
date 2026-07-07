@@ -21,7 +21,7 @@ const features = [
   },
 ]
 
-function Hero({ onDataLoaded, targetCoverage, setTargetCoverage }) {
+function Hero({ onDataLoaded, targetCoverage, setTargetCoverage, leadTime, setLeadTime }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -100,6 +100,8 @@ function Hero({ onDataLoaded, targetCoverage, setTargetCoverage }) {
           <CoverageSlider
             value={targetCoverage}
             onChange={setTargetCoverage}
+            leadTime={leadTime}
+            onLeadTimeChange={setLeadTime}
           />
         </div>
       </main>

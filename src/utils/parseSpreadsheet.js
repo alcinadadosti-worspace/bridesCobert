@@ -215,13 +215,29 @@ export function parseSpreadsheet(file) {
   })
 }
 
-export function calculateDecision(item, targetCoverage) {
+// Pedido de abastecimento por quantidade.
+// Cobre a demanda durante (cobertura desejada + prazo de entrega), descontando o estoque atual.
+// Fórmula: Pedido = ceil(DDV × (cobertura + prazo) − estoque atual), nunca negativo.
+export function calcPedidoSugerido(item, targetCoverage, leadTime = 15, isDescontinuado = false) {
+  // Descontinuados nunca geram compra; sem DDV não há como dimensionar a quantidade
+  if (isDescontinuado) return 0
+  if (!(item.ddvPrevisto > 0)) return 0
+
+  const diasAlvo = targetCoverage + leadTime
+  const pedido = item.ddvPrevisto * diasAlvo - item.estoqueAtual
+  return pedido > 0 ? Math.ceil(pedido) : 0
+}
+
+export function calculateDecision(item, targetCoverage, leadTime = 15) {
   // Calcular estoque total (atual + trânsito + pendente)
   const estoqueTotal = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
 
   // Verificar se o produto está em descontinuação/descontinuado
   const faseNormalizada = item.faseProduto?.toLowerCase() || ''
   const isDescontinuado = faseNormalizada.includes('descontinua')
+
+  // Quantidade sugerida de compra (independe da classificação de status)
+  const pedidoSugerido = calcPedidoSugerido(item, targetCoverage, leadTime, isDescontinuado)
 
   // Produtos descontinuados nunca devem ter sugestão de compra
   if (isDescontinuado) {
@@ -237,6 +253,7 @@ export function calculateDecision(item, targetCoverage) {
       excessLevel,
       excessDays,
       coverageGap: 0,
+      pedidoSugerido,
       status: hasExcess ? 'EXCESSO' : 'SAUDÁVEL',
       urgency: 'none'
     }
@@ -251,6 +268,7 @@ export function calculateDecision(item, targetCoverage) {
       excessLevel: 'none',
       excessDays: 0,
       coverageGap: targetCoverage,
+      pedidoSugerido,
       status: 'COMPRAR',
       urgency: 'high'
     }
@@ -294,13 +312,14 @@ export function calculateDecision(item, targetCoverage) {
     excessLevel,
     excessDays,
     coverageGap: Math.max(0, Math.round(coverageGap * 10) / 10),
+    pedidoSugerido,
     status,
     urgency
   }
 }
 
-export function analyzeData(data, targetCoverage) {
-  const analyzed = data.map(item => calculateDecision(item, targetCoverage))
+export function analyzeData(data, targetCoverage, leadTime = 15) {
+  const analyzed = data.map(item => calculateDecision(item, targetCoverage, leadTime))
 
   // Agrupar por loja
   const storeStats = {}
@@ -312,12 +331,14 @@ export function analyzeData(data, targetCoverage) {
         needToBuy: 0,
         healthy: 0,
         hasExcess: 0,
+        unidadesComprar: 0,
         totalCoverage: 0,
         avgCoverage: 0
       }
     }
     storeStats[item.loja].total++
     storeStats[item.loja].totalCoverage += item.coberturaProjetada
+    storeStats[item.loja].unidadesComprar += item.pedidoSugerido
     if (item.needsToBuy) storeStats[item.loja].needToBuy++
     else if (item.hasExcess) storeStats[item.loja].hasExcess++
     else storeStats[item.loja].healthy++
@@ -338,6 +359,7 @@ export function analyzeData(data, targetCoverage) {
   const summary = {
     totalSKUs: analyzed.length,
     needToBuy: analyzed.filter(item => item.needsToBuy).length,
+    unidadesComprar: analyzed.reduce((acc, item) => acc + item.pedidoSugerido, 0),
     healthy: analyzed.filter(item => !item.needsToBuy && !item.hasExcess).length,
     highUrgency: analyzed.filter(item => item.urgency === 'high').length,
     mediumUrgency: analyzed.filter(item => item.urgency === 'medium').length,
@@ -358,8 +380,8 @@ export function analyzeData(data, targetCoverage) {
 }
 
 // Função para analisar oportunidades de transferência
-export function analyzeTransfers(data, targetCoverage) {
-  const analyzed = data.map(item => calculateDecision(item, targetCoverage))
+export function analyzeTransfers(data, targetCoverage, leadTime = 15) {
+  const analyzed = data.map(item => calculateDecision(item, targetCoverage, leadTime))
 
   // Agrupar por SKU
   const skuGroups = {}

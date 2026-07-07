@@ -121,17 +121,17 @@ function StoreCoverageSection({ summary, targetCoverage }) {
   )
 }
 
-function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
+function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadTime, onReset }) {
   const [activeTab, setActiveTab] = useState('table')
 
   const { items, summary } = useMemo(
-    () => analyzeData(data, targetCoverage),
-    [data, targetCoverage]
+    () => analyzeData(data, targetCoverage, leadTime),
+    [data, targetCoverage, leadTime]
   )
 
   const transfers = useMemo(
-    () => analyzeTransfers(data, targetCoverage),
-    [data, targetCoverage]
+    () => analyzeTransfers(data, targetCoverage, leadTime),
+    [data, targetCoverage, leadTime]
   )
 
   return (
@@ -166,6 +166,8 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, onReset }) {
               <CoverageSlider
                 value={targetCoverage}
                 onChange={setTargetCoverage}
+                leadTime={leadTime}
+                onLeadTimeChange={setLeadTime}
                 compact
               />
 
