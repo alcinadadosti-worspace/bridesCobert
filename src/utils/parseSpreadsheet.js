@@ -16,20 +16,29 @@ export const STORE_NAMES = {
 // Categorias a serem excluídas
 const EXCLUDED_CATEGORIES = ['SUPORTE À VENDA', 'SUPORTE A VENDA']
 
-// Mapeamento de possíveis nomes de colunas para os campos esperados
+// Ciclo de vendas Boticário (dias). Usado para derivar o DDV a partir da "Projeção ciclo atual"
+// quando a planilha não traz DDV PREVISTO (formato DRAFT de reposição).
+const CICLO_DIAS = 21
+
+// Mapeamento de possíveis nomes de colunas para os campos esperados.
+// Obs.: 'projecao'/'projeção' foram removidos de coberturaProjetada e 'ciclo' de faseProduto
+// para não casarem por engano com "Projeção ciclo atual" / "Histórico ... Ciclo" do formato DRAFT.
 const columnMappings = {
   sku: ['sku', 'codigo', 'código', 'cod', 'code', 'id', 'produto_id', 'product_id'],
   descricao: ['descricao', 'descrição', 'description', 'nome', 'name', 'produto', 'product'],
   categoria: ['categoria', 'category', 'cat', 'tipo', 'type', 'grupo', 'group'],
   classe: ['classe', 'class', 'classificacao', 'classificação'],
-  faseProduto: ['fases produto', 'fase produto', 'fases_produto', 'fase', 'phase', 'ciclo'],
+  faseProduto: ['fases produto', 'fase produto', 'fases_produto', 'fase', 'phase'],
   pdv: ['pdv', 'loja', 'store', 'filial', 'unidade'],
   estoqueAtual: ['estoque atual', 'estoque_atual', 'estoqueatual', 'stock', 'current_stock', 'qtd', 'quantidade', 'qty'],
   estoqueTransito: ['estoque em transito', 'estoque_em_transito', 'estoque em trânsito', 'em transito', 'transito', 'transit', 'in_transit'],
   pedidoPendente: ['pedido pendente', 'pedido_pendente', 'pedidopendente', 'pending', 'pendente', 'pending_order', 'pedidos'],
   coberturaAtual: ['cobertura atual', 'cobertura_atual', 'coberturaatual', 'coverage', 'current_coverage', 'dias_cobertura'],
-  coberturaProjetada: ['cobertura projetada', 'cobertura_projetada', 'coberturaprojetada', 'projected_coverage', 'projecao', 'projeção'],
-  ddvPrevisto: ['ddv previsto', 'ddv_previsto', 'ddv', 'demanda_diaria', 'demanda diaria']
+  coberturaProjetada: ['cobertura projetada', 'cobertura_projetada', 'coberturaprojetada', 'projected_coverage'],
+  ddvPrevisto: ['ddv previsto', 'ddv_previsto', 'ddv', 'demanda_diaria', 'demanda diaria'],
+  // Formato DRAFT (reposição do sistema)
+  projecaoCiclo: ['projecao ciclo atual', 'projeção ciclo atual'],
+  compraInteligente: ['compra inteligente semanal']
 }
 
 function normalizeString(str) {
@@ -58,8 +67,20 @@ function parseNumber(value) {
   if (value === null || value === undefined || value === '') return 0
   if (typeof value === 'number') return value
 
-  const cleaned = value.toString().replace(/[^\d.,\-]/g, '').replace(',', '.')
-  const parsed = parseFloat(cleaned)
+  let s = value.toString().trim().replace(/[^\d.,\-]/g, '')
+  if (s === '' || s === '-') return 0
+
+  const hasDot = s.includes('.')
+  const hasComma = s.includes(',')
+  if (hasDot && hasComma) {
+    // Formato pt-BR "1.234,56": ponto = separador de milhar, vírgula = decimal
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else if (hasComma) {
+    // "1234,56": vírgula = decimal
+    s = s.replace(',', '.')
+  }
+  // Só ponto: mantém como está (assume decimal, ex.: "1.5")
+  const parsed = parseFloat(s)
   return isNaN(parsed) ? 0 : parsed
 }
 
@@ -67,7 +88,7 @@ function getStoreName(pdv) {
   return STORE_NAMES[pdv] || `PDV ${pdv}`
 }
 
-function processSheet(jsonData, sheetIndex) {
+export function processSheet(jsonData, sheetIndex) {
   if (jsonData.length < 2) return []
 
   const headers = jsonData[0]
@@ -84,7 +105,9 @@ function processSheet(jsonData, sheetIndex) {
     pedidoPendente: findColumnIndex(headers, columnMappings.pedidoPendente),
     coberturaAtual: findColumnIndex(headers, columnMappings.coberturaAtual),
     coberturaProjetada: findColumnIndex(headers, columnMappings.coberturaProjetada),
-    ddvPrevisto: findColumnIndex(headers, columnMappings.ddvPrevisto)
+    ddvPrevisto: findColumnIndex(headers, columnMappings.ddvPrevisto),
+    projecaoCiclo: findColumnIndex(headers, columnMappings.projecaoCiclo),
+    compraInteligente: findColumnIndex(headers, columnMappings.compraInteligente)
   }
 
   const essentialColumns = ['sku', 'estoqueAtual']
@@ -117,9 +140,24 @@ function processSheet(jsonData, sheetIndex) {
     const coberturaAtual = columnIndices.coberturaAtual !== -1
       ? parseNumber(row[columnIndices.coberturaAtual])
       : 0
-    const ddvPrevisto = columnIndices.ddvPrevisto !== -1
+
+    // DDV previsto: usa a coluna direta; no formato DRAFT (sem DDV) deriva da projeção do ciclo
+    let ddvPrevisto = columnIndices.ddvPrevisto !== -1
       ? parseNumber(row[columnIndices.ddvPrevisto])
       : 0
+    const projecaoCiclo = columnIndices.projecaoCiclo !== -1
+      ? parseNumber(row[columnIndices.projecaoCiclo])
+      : 0
+    if (columnIndices.ddvPrevisto === -1 && projecaoCiclo > 0) {
+      ddvPrevisto = projecaoCiclo / CICLO_DIAS
+    }
+
+    // Sugestão de compra externa (formato DRAFT): "Compra inteligente semanal" já pronta do sistema.
+    // null quando a coluna não existe (formato CONSULTA) -> o app calcula pela cobertura da classe.
+    const compraInteligente = columnIndices.compraInteligente !== -1
+      ? Math.round(parseNumber(row[columnIndices.compraInteligente]))
+      : null
+
     const estoqueTotal = estoqueAtual + estoqueTransito + pedidoPendente
 
     // Cobertura projetada: usa coluna da planilha, depois DDV, depois cobertura atual
@@ -166,7 +204,8 @@ function processSheet(jsonData, sheetIndex) {
       pedidoPendente,
       ddvPrevisto: Math.round(ddvPrevisto * 100) / 100,
       coberturaAtual: Math.round(coberturaAtual * 10) / 10,
-      coberturaProjetada: Math.round(coberturaProjetada * 10) / 10
+      coberturaProjetada: Math.round(coberturaProjetada * 10) / 10,
+      compraInteligente
     })
   }
 
@@ -215,20 +254,40 @@ export function parseSpreadsheet(file) {
   })
 }
 
+// Meta de cobertura (dias) por classe de giro:
+//   A  = maior giro        -> 57 dias
+//   B  = giro médio/alto   -> 50 dias
+//   C  = baixo giro        -> 30 dias
+//   E  = giro mais baixo   -> 30 dias
+// Itens cuja classe não está no mapa (ex.: "Sem classe") usam o padrão (targetCoverage global).
+export const CLASS_TARGETS = { A: 57, B: 50, C: 30, E: 30 }
+
+export function metaDaClasse(classe, padrao) {
+  const key = (classe || '').toString().trim().toUpperCase()
+  return CLASS_TARGETS[key] ?? padrao
+}
+
 // Pedido de abastecimento por quantidade.
-// Cobre a demanda durante (cobertura desejada + prazo de entrega), descontando o estoque atual.
-// Fórmula: Pedido = ceil(DDV × (cobertura + prazo) − estoque atual), nunca negativo.
+// Cobre a demanda durante (meta da classe + prazo de entrega), descontando o estoque
+// já disponível ou a caminho (atual + trânsito + pedido pendente), nunca negativo.
+// Fórmula: Pedido = ceil(DDV × (meta + prazo) − (atual + trânsito + pendente)).
 export function calcPedidoSugerido(item, targetCoverage, leadTime = 15, isDescontinuado = false) {
   // Descontinuados nunca geram compra; sem DDV não há como dimensionar a quantidade
   if (isDescontinuado) return 0
   if (!(item.ddvPrevisto > 0)) return 0
 
   const diasAlvo = targetCoverage + leadTime
-  const pedido = item.ddvPrevisto * diasAlvo - item.estoqueAtual
+  // Desconta tudo que já vai suprir a demanda: em mãos + em trânsito + pedidos pendentes.
+  // (Descontar só o estoque atual super-dimensionava, recomprando o que já está a caminho.)
+  const disponivel = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
+  const pedido = item.ddvPrevisto * diasAlvo - disponivel
   return pedido > 0 ? Math.ceil(pedido) : 0
 }
 
 export function calculateDecision(item, targetCoverage, leadTime = 15) {
+  // Meta de cobertura deste item = meta da sua classe (padrão = targetCoverage global)
+  const meta = metaDaClasse(item.classe, targetCoverage)
+
   // Calcular estoque total (atual + trânsito + pendente)
   const estoqueTotal = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
 
@@ -236,18 +295,23 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
   const faseNormalizada = item.faseProduto?.toLowerCase() || ''
   const isDescontinuado = faseNormalizada.includes('descontinua')
 
-  // Quantidade sugerida de compra (independe da classificação de status)
-  const pedidoSugerido = calcPedidoSugerido(item, targetCoverage, leadTime, isDescontinuado)
+  // Quantidade sugerida de compra:
+  // - Formato DRAFT: usa "Compra inteligente semanal" já pronta da planilha (número exato do sistema)
+  // - Caso contrário: calcula pela cobertura da classe + prazo de entrega
+  const pedidoSugerido = item.compraInteligente != null
+    ? item.compraInteligente
+    : calcPedidoSugerido(item, meta, leadTime, isDescontinuado)
 
   // Produtos descontinuados nunca devem ter sugestão de compra
   if (isDescontinuado) {
-    const coverageRatio = item.coberturaProjetada / targetCoverage
+    const coverageRatio = item.coberturaProjetada / meta
     const hasExcess = coverageRatio > 1
     const excessLevel = coverageRatio > 2 ? 'high' : coverageRatio > 1 ? 'moderate' : 'none'
-    const excessDays = hasExcess ? Math.round((item.coberturaProjetada - targetCoverage) * 10) / 10 : 0
+    const excessDays = hasExcess ? Math.round((item.coberturaProjetada - meta) * 10) / 10 : 0
 
     return {
       ...item,
+      metaCobertura: meta,
       needsToBuy: false,
       hasExcess,
       excessLevel,
@@ -263,19 +327,20 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
   if (estoqueTotal === 0) {
     return {
       ...item,
+      metaCobertura: meta,
       needsToBuy: true,
       hasExcess: false,
       excessLevel: 'none',
       excessDays: 0,
-      coverageGap: targetCoverage,
+      coverageGap: meta,
       pedidoSugerido,
       status: 'COMPRAR',
       urgency: 'high'
     }
   }
 
-  const coverageRatio = item.coberturaProjetada / targetCoverage
-  const coverageGap = targetCoverage - item.coberturaProjetada
+  const coverageRatio = item.coberturaProjetada / meta
+  const coverageGap = meta - item.coberturaProjetada
 
   // Determinar se precisa comprar (< 75% da meta)
   const needsToBuy = coverageRatio < 0.75
@@ -283,7 +348,7 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
   // Verificar excesso de estoque (> 100% da meta)
   const hasExcess = coverageRatio > 1
   const excessLevel = coverageRatio > 2 ? 'high' : coverageRatio > 1 ? 'moderate' : 'none'
-  const excessDays = hasExcess ? Math.round((item.coberturaProjetada - targetCoverage) * 10) / 10 : 0
+  const excessDays = hasExcess ? Math.round((item.coberturaProjetada - meta) * 10) / 10 : 0
 
   // Determinar status
   let status
@@ -307,6 +372,7 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
 
   return {
     ...item,
+    metaCobertura: meta,
     needsToBuy,
     hasExcess,
     excessLevel,
@@ -316,6 +382,21 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
     status,
     urgency
   }
+}
+
+// Cobertura agregada de um conjunto de itens (loja, classe ou geral), igual à
+// planilha de referência "COBERTURA LOJAS":
+//   Cobertura = (Σ estoque atual + Σ estoque em trânsito) / Σ DDV previsto
+// É uma razão de somas ponderada pela demanda (NÃO a média das coberturas por
+// item) e o pedido pendente NÃO entra no estoque — exatamente como a planilha.
+export function coberturaAgregada(items) {
+  let estoque = 0
+  let ddv = 0
+  for (const it of items) {
+    estoque += (it.estoqueAtual || 0) + (it.estoqueTransito || 0)
+    ddv += (it.ddvPrevisto || 0)
+  }
+  return ddv > 0 ? Math.round((estoque / ddv) * 10) / 10 : 0
 }
 
 export function analyzeData(data, targetCoverage, leadTime = 15) {
@@ -332,21 +413,32 @@ export function analyzeData(data, targetCoverage, leadTime = 15) {
         healthy: 0,
         hasExcess: 0,
         unidadesComprar: 0,
-        totalCoverage: 0,
-        avgCoverage: 0
+        sumEstoque: 0,   // Σ (estoque atual + trânsito) — numerador da cobertura
+        sumDDV: 0,       // Σ DDV previsto — denominador da cobertura
+        sumMetaXDDV: 0,  // Σ (meta da classe × DDV) — para a meta ponderada da loja
+        avgCoverage: 0,
+        meta: 0
       }
     }
-    storeStats[item.loja].total++
-    storeStats[item.loja].totalCoverage += item.coberturaProjetada
-    storeStats[item.loja].unidadesComprar += item.pedidoSugerido
-    if (item.needsToBuy) storeStats[item.loja].needToBuy++
-    else if (item.hasExcess) storeStats[item.loja].hasExcess++
-    else storeStats[item.loja].healthy++
+    const s = storeStats[item.loja]
+    s.total++
+    s.sumEstoque += item.estoqueAtual + item.estoqueTransito
+    s.sumDDV += item.ddvPrevisto
+    s.sumMetaXDDV += item.metaCobertura * item.ddvPrevisto
+    s.unidadesComprar += item.pedidoSugerido
+    if (item.needsToBuy) s.needToBuy++
+    else if (item.hasExcess) s.hasExcess++
+    else s.healthy++
   })
 
+  // Cobertura da loja = (Σ estoque atual + Σ trânsito) / Σ DDV previsto (igual à planilha)
+  // Meta da loja = média das metas de classe ponderada pelo DDV (0 se a loja não tem demanda)
   Object.values(storeStats).forEach(s => {
-    s.avgCoverage = s.total > 0 ? Math.round((s.totalCoverage / s.total) * 10) / 10 : 0
-    delete s.totalCoverage
+    s.avgCoverage = s.sumDDV > 0 ? Math.round((s.sumEstoque / s.sumDDV) * 10) / 10 : 0
+    s.meta = s.sumDDV > 0 ? Math.round(s.sumMetaXDDV / s.sumDDV) : targetCoverage
+    delete s.sumEstoque
+    delete s.sumDDV
+    delete s.sumMetaXDDV
   })
 
   // Encontrar lojas únicas
@@ -373,7 +465,17 @@ export function analyzeData(data, targetCoverage, leadTime = 15) {
     storeStats,
     classes,
     fases,
-    avgCoverage: Math.round((analyzed.reduce((acc, item) => acc + item.coberturaProjetada, 0) / analyzed.length) * 10) / 10
+    // Fonte da sugestão de compra: true = "Compra inteligente" veio pronta na planilha (formato DRAFT)
+    hasCompraInteligente: analyzed.some(i => i.compraInteligente != null),
+    // Cobertura geral (todas as lojas) pela mesma regra da planilha
+    avgCoverage: coberturaAgregada(analyzed),
+    // Meta geral = média das metas de classe ponderada pelo DDV (para colorir a cobertura geral)
+    meta: (() => {
+      const totalDDV = analyzed.reduce((a, it) => a + it.ddvPrevisto, 0)
+      return totalDDV > 0
+        ? Math.round(analyzed.reduce((a, it) => a + it.metaCobertura * it.ddvPrevisto, 0) / totalDDV)
+        : targetCoverage
+    })()
   }
 
   return { items: analyzed, summary }

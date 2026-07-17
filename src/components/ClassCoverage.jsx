@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Layers, Grid3x3, ChevronDown } from 'lucide-react'
+import { metaDaClasse } from '../utils/parseSpreadsheet'
 
 // Cores por classe (mesmo padrão usado na tabela de dados)
 const CLASS_COLORS = {
@@ -66,6 +67,7 @@ function ClassCoverage({ items, targetCoverage }) {
     [items, selectedStore]
   )
 
+  // Cobertura por classe = (Σ estoque atual + Σ trânsito) / Σ DDV previsto (igual à planilha)
   const classData = useMemo(() => {
     const groups = {}
     filteredItems.forEach(item => {
@@ -77,14 +79,14 @@ function ClassCoverage({ items, targetCoverage }) {
           needToBuy: 0,
           healthy: 0,
           hasExcess: 0,
-          sumCov: 0,
-          sumDDV: 0,
+          sumEstoque: 0, // Σ (estoque atual + trânsito) — numerador da cobertura
+          sumDDV: 0,     // Σ DDV previsto — denominador da cobertura
           ddvCount: 0,
         }
       }
       const g = groups[key]
       g.total++
-      g.sumCov += item.coberturaProjetada
+      g.sumEstoque += item.estoqueAtual + item.estoqueTransito
       if (item.ddvPrevisto > 0) {
         g.sumDDV += item.ddvPrevisto
         g.ddvCount++
@@ -97,24 +99,28 @@ function ClassCoverage({ items, targetCoverage }) {
     return Object.values(groups)
       .map(g => ({
         ...g,
-        avgCoverage: g.total ? Math.round((g.sumCov / g.total) * 10) / 10 : 0,
+        avgCoverage: g.sumDDV > 0 ? Math.round((g.sumEstoque / g.sumDDV) * 10) / 10 : 0,
         avgDDV: g.ddvCount ? Math.round((g.sumDDV / g.ddvCount) * 100) / 100 : 0,
+        meta: metaDaClasse(g.classe, targetCoverage), // meta de cobertura desta classe
       }))
       .sort((a, b) => sortClasses(a.classe, b.classe))
-  }, [filteredItems])
+  }, [filteredItems, targetCoverage])
 
+  // Matriz classe × loja: mesma cobertura ponderada da planilha por célula
   const matrix = useMemo(() => {
     const cells = {}
     items.forEach(item => {
       const c = item.classe || 'Sem classe'
       const key = `${c}|${item.loja}`
-      if (!cells[key]) cells[key] = { sum: 0, count: 0 }
-      cells[key].sum += item.coberturaProjetada
-      cells[key].count++
+      if (!cells[key]) cells[key] = { sumEstoque: 0, sumDDV: 0 }
+      cells[key].sumEstoque += item.estoqueAtual + item.estoqueTransito
+      cells[key].sumDDV += item.ddvPrevisto
     })
     const get = (c, loja) => {
       const cell = cells[`${c}|${loja}`]
-      return cell ? Math.round((cell.sum / cell.count) * 10) / 10 : null
+      if (!cell) return null              // sem itens nessa classe/loja
+      if (!(cell.sumDDV > 0)) return null  // tem estoque mas sem demanda: cobertura indefinida
+      return Math.round((cell.sumEstoque / cell.sumDDV) * 10) / 10
     }
     return { stores, get }
   }, [items, stores])
@@ -139,7 +145,7 @@ function ClassCoverage({ items, targetCoverage }) {
             <Layers className="w-5 h-5 text-cyan-400" />
             <h3 className="text-lg font-semibold text-white">Cobertura por Classe</h3>
             <span className="text-xs text-gray-500 ml-1">
-              (meta: {targetCoverage}d{selectedStore !== 'all' ? ` · ${selectedStore}` : ''})
+              (meta por classe{selectedStore !== 'all' ? ` · ${selectedStore}` : ''})
             </span>
           </div>
           <div className="relative">
@@ -181,12 +187,14 @@ function ClassCoverage({ items, targetCoverage }) {
               </div>
 
               <div className="flex items-end justify-between mb-2">
-                <span className="text-xs text-gray-500">Cobertura média</span>
-                <span className={`text-2xl font-bold ${coverageColor(c.avgCoverage, targetCoverage)}`}>
+                <span className="text-xs text-gray-500">
+                  Cobertura média <span className="text-gray-600">(meta {c.meta}d)</span>
+                </span>
+                <span className={`text-2xl font-bold ${coverageColor(c.avgCoverage, c.meta)}`}>
                   {c.avgCoverage}d
                 </span>
               </div>
-              <CoverageBar value={c.avgCoverage} target={targetCoverage} max={maxCoverage} />
+              <CoverageBar value={c.avgCoverage} target={c.meta} max={maxCoverage} />
 
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-gray-500">
@@ -255,10 +263,11 @@ function ClassCoverage({ items, targetCoverage }) {
             <tbody>
               {classes.map(c => (
                 <tr key={c} className="border-t border-white/5">
-                  <td className="sticky left-0 z-10 bg-[#1a1a2e] px-3 py-2">
+                  <td className="sticky left-0 z-10 bg-[#1a1a2e] px-3 py-2 whitespace-nowrap">
                     <span className={`px-2 py-0.5 text-xs font-bold rounded border ${classBadgeColor(c)}`}>
                       {c === 'Sem classe' ? '—' : c}
                     </span>
+                    <span className="ml-2 text-xs text-gray-500">meta {metaDaClasse(c, targetCoverage)}d</span>
                   </td>
                   {matrix.stores.map(loja => {
                     const val = matrix.get(c, loja)
@@ -267,7 +276,7 @@ function ClassCoverage({ items, targetCoverage }) {
                         {val === null ? (
                           <span className="text-gray-700">·</span>
                         ) : (
-                          <span className={`text-sm font-medium ${coverageColor(val, targetCoverage)}`}>
+                          <span className={`text-sm font-medium ${coverageColor(val, metaDaClasse(c, targetCoverage))}`}>
                             {val}d
                           </span>
                         )}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft,
@@ -21,8 +21,12 @@ import {
   Download,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { CLASS_TARGETS } from '../utils/parseSpreadsheet'
 
 const PAGE_SIZES = [10, 25, 50, 100]
+
+// "A 57 · B 50 · C 30 · E 30" — gerado do mapa para não desatualizar
+const METAS_LABEL = Object.entries(CLASS_TARGETS).map(([k, v]) => `${k} ${v}`).join(' · ')
 
 function StatusBadge({ status, urgency, excessLevel }) {
   const statusConfig = {
@@ -173,6 +177,12 @@ function DataTable({ items, targetCoverage }) {
 
   // Paginação
   const totalPages = Math.ceil(sortedItems.length / pageSize)
+
+  // Se os dados encolherem (troca de filtro/threshold), evita ficar numa página vazia além do fim
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages || 1)
+  }, [totalPages, currentPage])
+
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return sortedItems.slice(start, start + pageSize)
@@ -216,10 +226,12 @@ function DataTable({ items, targetCoverage }) {
       'Dias Excesso',
     ]
 
-    // Usa sortedItems que já está filtrado e ordenado
+    // Usa sortedItems que já está filtrado e ordenado.
+    // Sem aspas manuais na descrição: aoa_to_sheet já cuida do escape do xlsx
+    // (envolver em aspas colocaria aspas literais dentro da célula).
     const rows = sortedItems.map((item) => [
       item.sku,
-      `"${item.descricao}"`,
+      item.descricao,
       item.categoria,
       item.loja,
       item.classe,
@@ -285,7 +297,7 @@ function DataTable({ items, targetCoverage }) {
           <div>
             <h2 className="text-lg font-semibold text-white">Análise de Estoque</h2>
             <p className="text-sm text-gray-400">
-              {sortedItems.length} itens (Meta: {targetCoverage} dias)
+              {sortedItems.length} itens · meta de cobertura por classe ({METAS_LABEL})
             </p>
           </div>
 
@@ -531,7 +543,7 @@ function DataTable({ items, targetCoverage }) {
               <th
                 onClick={() => handleSort('pedidoSugerido')}
                 className="w-[9%] px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase cursor-pointer hover:text-white"
-                title="Pedido de abastecimento sugerido (DDV × (cobertura + prazo) − estoque atual)"
+                title="Pedido sugerido: DDV × (meta da classe + prazo) − (estoque atual + trânsito + pendente). No formato DRAFT, usa a Compra inteligente da planilha."
               >
                 <div className="flex items-center gap-1">
                   Pedido {getSortIcon('pedidoSugerido')}
@@ -626,7 +638,7 @@ function DataTable({ items, targetCoverage }) {
                   <td className="px-3 py-3">
                     <span className={`
                       text-sm font-medium
-                      ${item.coberturaProjetada < targetCoverage
+                      ${item.coberturaProjetada < item.metaCobertura
                         ? 'text-amber-400'
                         : item.hasExcess
                           ? item.excessLevel === 'high'

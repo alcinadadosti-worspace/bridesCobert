@@ -1,5 +1,9 @@
 import { motion } from 'framer-motion'
 import { Target, Calendar, Truck } from 'lucide-react'
+import { CLASS_TARGETS } from '../utils/parseSpreadsheet'
+
+// "A 57 · B 50 · C 30 · E 30" — metas de cobertura por classe (geradas do mapa)
+const METAS_LABEL = Object.entries(CLASS_TARGETS).map(([k, v]) => `${k} ${v}`).join(' · ')
 
 function CoverageSlider({ value, onChange, leadTime = 15, onLeadTimeChange, compact = false }) {
   const handleSliderChange = (e) => {
@@ -29,7 +33,7 @@ function CoverageSlider({ value, onChange, leadTime = 15, onLeadTimeChange, comp
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-gray-400">
             <Target className="w-4 h-4" />
-            <span className="text-sm font-medium">Cobertura:</span>
+            <span className="text-sm font-medium" title={`Metas por classe: ${METAS_LABEL}`}>Cobertura padrão:</span>
           </div>
           <input
             type="range"
@@ -110,8 +114,8 @@ function CoverageSlider({ value, onChange, leadTime = 15, onLeadTimeChange, comp
               <Target className="w-5 h-5 text-primary-400" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">Cobertura desejada</h3>
-              <p className="text-xs text-gray-400">Dias de estoque que quer manter</p>
+              <h3 className="text-sm font-semibold text-white">Cobertura padrão</h3>
+              <p className="text-xs text-gray-400">Metas reais por classe: {METAS_LABEL}</p>
             </div>
           </div>
 

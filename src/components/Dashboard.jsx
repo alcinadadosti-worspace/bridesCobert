@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
@@ -36,7 +36,8 @@ function CoverageBar({ value, target, max }) {
 
 function StoreCoverageSection({ summary, targetCoverage }) {
   const stores = Object.entries(summary.storeStats).sort((a, b) => a[0].localeCompare(b[0]))
-  const maxCoverage = Math.max(targetCoverage * 2.5, ...stores.map(([, s]) => s.avgCoverage))
+  const metaGeral = summary.meta || targetCoverage
+  const maxCoverage = Math.max(metaGeral * 2.5, ...stores.map(([, s]) => s.avgCoverage))
 
   return (
     <motion.div
@@ -48,7 +49,7 @@ function StoreCoverageSection({ summary, targetCoverage }) {
       <div className="flex items-center gap-2 mb-5">
         <BarChart2 className="w-5 h-5 text-cyan-400" />
         <h3 className="text-lg font-semibold text-white">Cobertura por Loja</h3>
-        <span className="text-xs text-gray-500 ml-1">(meta: {targetCoverage}d)</span>
+        <span className="text-xs text-gray-500 ml-1">(meta ponderada por classe: ~{metaGeral}d)</span>
       </div>
 
       {/* Overall */}
@@ -56,15 +57,15 @@ function StoreCoverageSection({ summary, targetCoverage }) {
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-400">Geral — todas as lojas</span>
           <span className={`text-lg font-bold ${
-            summary.avgCoverage < targetCoverage * 0.75 ? 'text-red-400' :
-            summary.avgCoverage < targetCoverage ? 'text-amber-400' :
-            summary.avgCoverage > targetCoverage * 2 ? 'text-purple-400' :
+            summary.avgCoverage < metaGeral * 0.75 ? 'text-red-400' :
+            summary.avgCoverage < metaGeral ? 'text-amber-400' :
+            summary.avgCoverage > metaGeral * 2 ? 'text-purple-400' :
             'text-emerald-400'
           }`}>
             {summary.avgCoverage}d
           </span>
         </div>
-        <CoverageBar value={summary.avgCoverage} target={targetCoverage} max={maxCoverage} />
+        <CoverageBar value={summary.avgCoverage} target={metaGeral} max={maxCoverage} />
         <p className="text-xs text-gray-500 mt-1">{summary.totalSKUs} SKUs · {stores.length} lojas</p>
       </div>
 
@@ -87,16 +88,16 @@ function StoreCoverageSection({ summary, targetCoverage }) {
                 </span>
                 <span className={`text-sm font-semibold w-14 text-right ${
                   stats.avgCoverage === 0 ? 'text-gray-600' :
-                  stats.avgCoverage < targetCoverage * 0.75 ? 'text-red-400' :
-                  stats.avgCoverage < targetCoverage ? 'text-amber-400' :
-                  stats.avgCoverage > targetCoverage * 2 ? 'text-purple-400' :
+                  stats.avgCoverage < stats.meta * 0.75 ? 'text-red-400' :
+                  stats.avgCoverage < stats.meta ? 'text-amber-400' :
+                  stats.avgCoverage > stats.meta * 2 ? 'text-purple-400' :
                   'text-emerald-400'
                 }`}>
                   {stats.avgCoverage}d
                 </span>
               </div>
             </div>
-            <CoverageBar value={stats.avgCoverage} target={targetCoverage} max={maxCoverage} />
+            <CoverageBar value={stats.avgCoverage} target={stats.meta} max={maxCoverage} />
           </div>
         ))}
       </div>
@@ -206,6 +207,16 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
             <span className="text-sm text-emerald-300">
               Planilha carregada com sucesso
+            </span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full
+            bg-cyan-500/10 border border-cyan-500/20"
+          >
+            <ShoppingCart className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm text-cyan-300">
+              {summary.hasCompraInteligente
+                ? 'Sugestão de compra: Compra inteligente (da planilha)'
+                : 'Sugestão de compra: calculada (cobertura + prazo)'}
             </span>
           </div>
         </motion.div>
