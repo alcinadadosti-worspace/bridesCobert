@@ -578,15 +578,26 @@ export function analyzeTransfers(data, targetCoverage, leadTime = 15) {
         stores: []
       }
     }
+    // Transferência: cobertura considera SÓ estoque em mãos + trânsito (pedido pendente NÃO entra).
+    // Sem DDV não há demanda para decidir excesso/necessidade.
+    const temDDV = item.ddvPrevisto > 0
+    const cobTransfer = temDDV
+      ? Math.round(((item.estoqueAtual + item.estoqueTransito) / item.ddvPrevisto) * 10) / 10
+      : 0
+    const ratio = temDDV ? cobTransfer / item.metaCobertura : 0
+    const hasExcess = temDDV && ratio > 1
+    const needsToBuy = temDDV && ratio < 0.75
+    const excessLevel = ratio > 2 ? 'high' : ratio > 1 ? 'moderate' : 'none'
+
     skuGroups[item.sku].stores.push({
       loja: item.loja,
       pdv: item.pdv,
       estoqueAtual: item.estoqueAtual,
-      coberturaProjetada: item.coberturaProjetada,
+      coberturaProjetada: cobTransfer,
       status: item.status,
-      needsToBuy: item.needsToBuy,
-      hasExcess: item.hasExcess,
-      excessLevel: item.excessLevel
+      needsToBuy,
+      hasExcess,
+      excessLevel
     })
   })
 
