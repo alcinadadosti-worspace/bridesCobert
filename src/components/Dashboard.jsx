@@ -142,9 +142,9 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
     [data, targetCoverage, leadTime]
   )
 
-  // Ruptura = tem previsão de venda (DDV) mas está sem estoque em mãos
+  // Ruptura = tem previsão de venda (DDV) mas está sem estoque em mãos nem em trânsito
   const rupturaCount = useMemo(
-    () => items.filter(i => i.ddvPrevisto > 0 && i.estoqueAtual <= 0).length,
+    () => items.filter(i => i.ddvPrevisto > 0 && (i.estoqueAtual + i.estoqueTransito) <= 0).length,
     [items]
   )
 

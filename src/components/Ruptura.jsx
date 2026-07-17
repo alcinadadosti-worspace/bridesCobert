@@ -19,9 +19,10 @@ function StatTile({ icon: Icon, label, value, sub, color }) {
 }
 
 function Ruptura({ items, targetCoverage }) {
-  // Ruptura = tem previsão de venda (DDV) mas está sem estoque em mãos
+  // Ruptura = tem previsão de venda (DDV) mas está sem estoque — em mãos NEM em trânsito
+  // (estoque em trânsito já conta como estoque, então não é ruptura de fato)
   const ruptura = useMemo(
-    () => items.filter(i => i.ddvPrevisto > 0 && i.estoqueAtual <= 0),
+    () => items.filter(i => i.ddvPrevisto > 0 && (i.estoqueAtual + i.estoqueTransito) <= 0),
     [items]
   )
 
@@ -38,9 +39,9 @@ function Ruptura({ items, targetCoverage }) {
     [ruptura]
   )
 
-  // Ruptura crítica: sem nada em trânsito nem pendente para repor
+  // Ruptura crítica: sem nem um pedido pendente para repor (trânsito já é 0 por definição)
   const semReposicao = useMemo(
-    () => ruptura.filter(i => i.estoqueTransito <= 0 && i.pedidoPendente <= 0).length,
+    () => ruptura.filter(i => i.pedidoPendente <= 0).length,
     [ruptura]
   )
 
@@ -74,12 +75,12 @@ function Ruptura({ items, targetCoverage }) {
           <h3 className="text-lg font-semibold text-white">Ruptura de Estoque</h3>
         </div>
         <p className="text-xs text-gray-500 mb-5">
-          Itens com previsão de venda (DDV) mas sem estoque em mãos — venda que está sendo perdida agora.
+          Itens com previsão de venda (DDV) mas sem estoque em mãos nem em trânsito — venda que está sendo perdida agora.
         </p>
 
         {ruptura.length === 0 ? (
           <p className="text-sm text-gray-400 py-6 text-center">
-            Nenhum item em ruptura — todo item com previsão de venda tem estoque em mãos. 🎉
+            Nenhum item em ruptura — todo item com previsão de venda tem estoque (em mãos ou em trânsito). 🎉
           </p>
         ) : (
           <>
@@ -100,9 +101,9 @@ function Ruptura({ items, targetCoverage }) {
               />
               <StatTile
                 icon={Truck}
-                label="Sem reposição a caminho"
+                label="Sem reposição"
                 value={semReposicao.toLocaleString('pt-BR')}
-                sub="nada em trânsito nem pendente"
+                sub="sem pedido pendente para repor"
                 color={{ bg: 'bg-red-500/20', text: 'text-red-400' }}
               />
             </div>
