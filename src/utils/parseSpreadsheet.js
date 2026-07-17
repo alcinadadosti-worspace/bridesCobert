@@ -323,6 +323,76 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
     }
   }
 
+  // Sem DDV (sem previsão de venda): não dá para medir cobertura, urgência nem dimensionar compra.
+  // Não deve entrar em "Precisam de Compra" nem em "Excesso" só porque a cobertura ficou 0.
+  if (!(item.ddvPrevisto > 0)) {
+    // Exceção: se veio um pedido concreto (Compra inteligente do DRAFT), respeita como compra.
+    if (pedidoSugerido > 0) {
+      return {
+        ...item,
+        metaCobertura: meta,
+        needsToBuy: true,
+        hasExcess: false,
+        excessLevel: 'none',
+        excessDays: 0,
+        coverageGap: 0,
+        pedidoSugerido,
+        status: 'COMPRAR',
+        urgency: 'medium'
+      }
+    }
+    return {
+      ...item,
+      metaCobertura: meta,
+      needsToBuy: false,
+      hasExcess: false,
+      excessLevel: 'none',
+      excessDays: 0,
+      coverageGap: 0,
+      pedidoSugerido,
+      status: 'SEM PREVISÃO',
+      urgency: 'none'
+    }
+  }
+
+  // DRAFT: a "Compra inteligente" é a decisão de compra autoritativa do sistema.
+  // Ela manda no status (comprar ou não); a cobertura derivada só classifica quem NÃO é compra.
+  // Sem isso, a cobertura aproximada marcava "Comprar/Urgente" itens que o sistema pede comprar 0.
+  if (item.compraInteligente != null) {
+    if (pedidoSugerido > 0) {
+      const urgency = (estoqueTotal === 0 || item.coberturaProjetada < meta * 0.5) ? 'high' : 'medium'
+      return {
+        ...item,
+        metaCobertura: meta,
+        needsToBuy: true,
+        hasExcess: false,
+        excessLevel: 'none',
+        excessDays: 0,
+        coverageGap: Math.max(0, Math.round((meta - item.coberturaProjetada) * 10) / 10),
+        pedidoSugerido,
+        status: 'COMPRAR',
+        urgency
+      }
+    }
+    // Sistema não manda comprar: classifica por cobertura, sem sugerir compra
+    const coverageRatio = item.coberturaProjetada / meta
+    const hasExcess = coverageRatio > 1
+    const excessLevel = coverageRatio > 2 ? 'high' : coverageRatio > 1 ? 'moderate' : 'none'
+    const excessDays = hasExcess ? Math.round((item.coberturaProjetada - meta) * 10) / 10 : 0
+    return {
+      ...item,
+      metaCobertura: meta,
+      needsToBuy: false,
+      hasExcess,
+      excessLevel,
+      excessDays,
+      coverageGap: 0,
+      pedidoSugerido: 0,
+      status: hasExcess ? 'EXCESSO' : 'SAUDÁVEL',
+      urgency: 'none'
+    }
+  }
+
   // Se estoque total é 0, forçar urgência máxima independente da cobertura projetada da planilha
   if (estoqueTotal === 0) {
     return {
@@ -349,6 +419,10 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
   const hasExcess = coverageRatio > 1
   const excessLevel = coverageRatio > 2 ? 'high' : coverageRatio > 1 ? 'moderate' : 'none'
   const excessDays = hasExcess ? Math.round((item.coberturaProjetada - meta) * 10) / 10 : 0
+
+  // Item em excesso não recebe sugestão de compra calculada (não se compra o que já sobra).
+  // No formato DRAFT a "Compra inteligente" é autoritativa e é mantida como veio da planilha.
+  const pedidoFinal = hasExcess && item.compraInteligente == null ? 0 : pedidoSugerido
 
   // Determinar status
   let status
@@ -378,7 +452,7 @@ export function calculateDecision(item, targetCoverage, leadTime = 15) {
     excessLevel,
     excessDays,
     coverageGap: Math.max(0, Math.round(coverageGap * 10) / 10),
-    pedidoSugerido,
+    pedidoSugerido: pedidoFinal,
     status,
     urgency
   }
@@ -413,6 +487,7 @@ export function analyzeData(data, targetCoverage, leadTime = 15) {
         healthy: 0,
         hasExcess: 0,
         unidadesComprar: 0,
+        semPrevisao: 0,  // itens sem DDV (status "SEM PREVISÃO")
         sumEstoque: 0,   // Σ (estoque atual + trânsito) — numerador da cobertura
         sumDDV: 0,       // Σ DDV previsto — denominador da cobertura
         sumMetaXDDV: 0,  // Σ (meta da classe × DDV) — para a meta ponderada da loja
@@ -428,6 +503,7 @@ export function analyzeData(data, targetCoverage, leadTime = 15) {
     s.unidadesComprar += item.pedidoSugerido
     if (item.needsToBuy) s.needToBuy++
     else if (item.hasExcess) s.hasExcess++
+    else if (item.status === 'SEM PREVISÃO') s.semPrevisao++
     else s.healthy++
   })
 
@@ -451,8 +527,12 @@ export function analyzeData(data, targetCoverage, leadTime = 15) {
   const summary = {
     totalSKUs: analyzed.length,
     needToBuy: analyzed.filter(item => item.needsToBuy).length,
+    // Itens que efetivamente geram pedido de compra (> 0) — bate com "unidadesComprar"
+    comPedido: analyzed.filter(item => item.pedidoSugerido > 0).length,
     unidadesComprar: analyzed.reduce((acc, item) => acc + item.pedidoSugerido, 0),
-    healthy: analyzed.filter(item => !item.needsToBuy && !item.hasExcess).length,
+    healthy: analyzed.filter(item => item.status === 'SAUDÁVEL').length,
+    // Itens sem DDV (sem base para decisão de compra/cobertura)
+    semPrevisao: analyzed.filter(item => item.status === 'SEM PREVISÃO').length,
     highUrgency: analyzed.filter(item => item.urgency === 'high').length,
     mediumUrgency: analyzed.filter(item => item.urgency === 'medium').length,
     // Excesso

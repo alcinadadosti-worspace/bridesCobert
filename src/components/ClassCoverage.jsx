@@ -79,6 +79,7 @@ function ClassCoverage({ items, targetCoverage }) {
           needToBuy: 0,
           healthy: 0,
           hasExcess: 0,
+          semPrevisao: 0, // itens sem DDV
           sumEstoque: 0, // Σ (estoque atual + trânsito) — numerador da cobertura
           sumDDV: 0,     // Σ DDV previsto — denominador da cobertura
           ddvCount: 0,
@@ -93,6 +94,7 @@ function ClassCoverage({ items, targetCoverage }) {
       }
       if (item.needsToBuy) g.needToBuy++
       else if (item.hasExcess) g.hasExcess++
+      else if (item.status === 'SEM PREVISÃO') g.semPrevisao++
       else g.healthy++
     })
 
@@ -206,6 +208,12 @@ function ClassCoverage({ items, targetCoverage }) {
                   <span className="text-emerald-400" title="Saudável">{c.healthy}</span>
                   <span className="text-gray-700">·</span>
                   <span className="text-purple-400" title="Excesso">{c.hasExcess}</span>
+                  {c.semPrevisao > 0 && (
+                    <>
+                      <span className="text-gray-700">·</span>
+                      <span className="text-gray-500" title="Sem previsão (sem DDV)">{c.semPrevisao}</span>
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -225,7 +233,7 @@ function ClassCoverage({ items, targetCoverage }) {
           <span className="text-xs text-gray-600 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Acima de 200% da meta
           </span>
-          <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso</span>
+          <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso / Sem prev.</span>
         </div>
       </motion.div>
 

@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart, AlertOctagon } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
 import ClassCoverage from './ClassCoverage'
 import EstoqueParado from './EstoqueParado'
+import Ruptura from './Ruptura'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
 
@@ -66,7 +67,10 @@ function StoreCoverageSection({ summary, targetCoverage }) {
           </span>
         </div>
         <CoverageBar value={summary.avgCoverage} target={metaGeral} max={maxCoverage} />
-        <p className="text-xs text-gray-500 mt-1">{summary.totalSKUs} SKUs · {stores.length} lojas</p>
+        <p className="text-xs text-gray-500 mt-1">
+          {summary.totalSKUs} SKUs · {stores.length} lojas
+          {summary.semPrevisao > 0 && ` · ${summary.semPrevisao.toLocaleString('pt-BR')} sem previsão (sem DDV)`}
+        </p>
       </div>
 
       {/* Per store */}
@@ -85,6 +89,9 @@ function StoreCoverageSection({ summary, targetCoverage }) {
                   <span className="text-emerald-400">{stats.healthy}</span>
                   {' / '}
                   <span className="text-purple-400">{stats.hasExcess}</span>
+                  {stats.semPrevisao > 0 && (
+                    <>{' / '}<span className="text-gray-500" title="Sem previsão (sem DDV)">{stats.semPrevisao}</span></>
+                  )}
                 </span>
                 <span className={`text-sm font-semibold w-14 text-right ${
                   stats.avgCoverage === 0 ? 'text-gray-600' :
@@ -116,7 +123,7 @@ function StoreCoverageSection({ summary, targetCoverage }) {
         <span className="text-xs text-gray-600 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Acima de 200% da meta
         </span>
-        <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso</span>
+        <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso / Sem prev.</span>
       </div>
     </motion.div>
   )
@@ -133,6 +140,12 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
   const transfers = useMemo(
     () => analyzeTransfers(data, targetCoverage, leadTime),
     [data, targetCoverage, leadTime]
+  )
+
+  // Ruptura = tem previsão de venda (DDV) mas está sem estoque em mãos
+  const rupturaCount = useMemo(
+    () => items.filter(i => i.ddvPrevisto > 0 && i.estoqueAtual <= 0).length,
+    [items]
   )
 
   return (
@@ -350,6 +363,26 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
               <PackageX className="w-4 h-4" />
               Estoque Parado
             </button>
+            <button
+              onClick={() => setActiveTab('ruptura')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeTab === 'ruptura'
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'}
+              `}
+            >
+              <AlertOctagon className="w-4 h-4" />
+              Ruptura
+              {rupturaCount > 0 && (
+                <span className={`
+                  px-1.5 py-0.5 text-xs rounded-full
+                  ${activeTab === 'ruptura' ? 'bg-white/20' : 'bg-red-500/20 text-red-400'}
+                `}>
+                  {rupturaCount}
+                </span>
+              )}
+            </button>
           </div>
         </section>
 
@@ -366,6 +399,9 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
           )}
           {activeTab === 'parado' && (
             <EstoqueParado items={items} targetCoverage={targetCoverage} />
+          )}
+          {activeTab === 'ruptura' && (
+            <Ruptura items={items} targetCoverage={targetCoverage} />
           )}
         </section>
       </main>

@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Store,
   Download,
+  HelpCircle,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { CLASS_TARGETS } from '../utils/parseSpreadsheet'
@@ -68,6 +69,14 @@ function StatusBadge({ status, urgency, excessLevel }) {
       text: 'text-purple-400',
       label: 'Excesso Alto',
     },
+    // Sem DDV: sem base para decidir compra/cobertura
+    'SEM_PREVISAO': {
+      icon: HelpCircle,
+      bg: 'bg-gray-500/20',
+      border: 'border-gray-500/30',
+      text: 'text-gray-400',
+      label: 'Sem previsão',
+    },
   }
 
   let configKey
@@ -75,6 +84,8 @@ function StatusBadge({ status, urgency, excessLevel }) {
     configKey = `COMPRAR-${urgency}`
   } else if (status === 'EXCESSO') {
     configKey = `EXCESSO-${excessLevel}`
+  } else if (status === 'SEM PREVISÃO') {
+    configKey = 'SEM_PREVISAO'
   } else {
     configKey = 'SAUDÁVEL'
   }
@@ -137,6 +148,8 @@ function DataTable({ items, targetCoverage }) {
         result = result.filter((item) => !item.needsToBuy && !item.hasExcess)
       } else if (filterStatus === 'excess') {
         result = result.filter((item) => item.hasExcess)
+      } else if (filterStatus === 'semprev') {
+        result = result.filter((item) => item.status === 'SEM PREVISÃO')
       }
     }
 
@@ -341,6 +354,7 @@ function DataTable({ items, targetCoverage }) {
                 <option value="buy">Comprar</option>
                 <option value="healthy">Saudável</option>
                 <option value="excess">Excesso</option>
+                <option value="semprev">Sem previsão</option>
               </select>
             </div>
 
@@ -636,19 +650,23 @@ function DataTable({ items, targetCoverage }) {
                     {item.coberturaAtual}d
                   </td>
                   <td className="px-3 py-3">
-                    <span className={`
-                      text-sm font-medium
-                      ${item.coberturaProjetada < item.metaCobertura
-                        ? 'text-amber-400'
-                        : item.hasExcess
-                          ? item.excessLevel === 'high'
-                            ? 'text-purple-400'
-                            : 'text-blue-400'
-                          : 'text-emerald-400'
-                      }
-                    `}>
-                      {item.coberturaProjetada}d
-                    </span>
+                    {item.ddvPrevisto > 0 ? (
+                      <span className={`
+                        text-sm font-medium
+                        ${item.coberturaProjetada < item.metaCobertura
+                          ? 'text-amber-400'
+                          : item.hasExcess
+                            ? item.excessLevel === 'high'
+                              ? 'text-purple-400'
+                              : 'text-blue-400'
+                            : 'text-emerald-400'
+                        }
+                      `}>
+                        {item.coberturaProjetada}d
+                      </span>
+                    ) : (
+                      <span className="text-gray-600" title="Sem DDV — cobertura não calculável">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-3">
                     {item.pedidoSugerido > 0 ? (
