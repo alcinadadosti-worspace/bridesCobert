@@ -16,9 +16,9 @@ function CoverageBar({ value, target, max }) {
   const targetPct = Math.round((target / max) * 100)
   const color = value === 0 ? 'bg-gray-600' :
     value < target * 0.75 ? 'bg-red-500' :
-    value < target ? 'bg-amber-500' :
-    value > target * 2 ? 'bg-purple-500' :
-    'bg-emerald-500'
+    value <= target ? 'bg-emerald-500' :
+    value <= target * 2 ? 'bg-blue-500' :
+    'bg-purple-500'
 
   return (
     <div className="relative h-2 bg-white/10 rounded-full overflow-visible">
@@ -59,9 +59,9 @@ function StoreCoverageSection({ summary, targetCoverage }) {
           <span className="text-sm text-gray-400">Geral — todas as lojas</span>
           <span className={`text-lg font-bold ${
             summary.avgCoverage < metaGeral * 0.75 ? 'text-red-400' :
-            summary.avgCoverage < metaGeral ? 'text-amber-400' :
-            summary.avgCoverage > metaGeral * 2 ? 'text-purple-400' :
-            'text-emerald-400'
+            summary.avgCoverage <= metaGeral ? 'text-emerald-400' :
+            summary.avgCoverage <= metaGeral * 2 ? 'text-blue-400' :
+            'text-purple-400'
           }`}>
             {summary.avgCoverage}d
           </span>
@@ -96,9 +96,9 @@ function StoreCoverageSection({ summary, targetCoverage }) {
                 <span className={`text-sm font-semibold w-14 text-right ${
                   stats.avgCoverage === 0 ? 'text-gray-600' :
                   stats.avgCoverage < stats.meta * 0.75 ? 'text-red-400' :
-                  stats.avgCoverage < stats.meta ? 'text-amber-400' :
-                  stats.avgCoverage > stats.meta * 2 ? 'text-purple-400' :
-                  'text-emerald-400'
+                  stats.avgCoverage <= stats.meta ? 'text-emerald-400' :
+                  stats.avgCoverage <= stats.meta * 2 ? 'text-blue-400' :
+                  'text-purple-400'
                 }`}>
                   {stats.avgCoverage}d
                 </span>
@@ -115,13 +115,13 @@ function StoreCoverageSection({ summary, targetCoverage }) {
           <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Abaixo de 75% da meta
         </span>
         <span className="text-xs text-gray-600 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> 75–100% da meta
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Saudável (75–100%)
         </span>
         <span className="text-xs text-gray-600 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Dentro da meta
+          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Excesso (100–200%)
         </span>
         <span className="text-xs text-gray-600 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Acima de 200% da meta
+          <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Excesso alto (&gt;200%)
         </span>
         <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso / Sem prev.</span>
       </div>

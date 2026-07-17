@@ -14,12 +14,13 @@ function classBadgeColor(c) {
   return CLASS_COLORS[c] || 'bg-gray-500/20 text-gray-400 border-gray-500/30'
 }
 
+// Cores alinhadas ao status: acima da meta já é excesso (igual ao status/tabela).
 function coverageColor(value, target) {
   if (value === 0) return 'text-gray-600'
-  if (value < target * 0.75) return 'text-red-400'
-  if (value < target) return 'text-amber-400'
-  if (value > target * 2) return 'text-purple-400'
-  return 'text-emerald-400'
+  if (value < target * 0.75) return 'text-red-400'   // < 75% da meta (comprar)
+  if (value <= target) return 'text-emerald-400'      // 75–100% (saudável)
+  if (value <= target * 2) return 'text-blue-400'     // 100–200% (excesso)
+  return 'text-purple-400'                             // > 200% (excesso alto)
 }
 
 function CoverageBar({ value, target, max }) {
@@ -28,9 +29,9 @@ function CoverageBar({ value, target, max }) {
   const targetPct = max > 0 ? Math.round((target / max) * 100) : 0
   const color = value === 0 ? 'bg-gray-600' :
     value < target * 0.75 ? 'bg-red-500' :
-    value < target ? 'bg-amber-500' :
-    value > target * 2 ? 'bg-purple-500' :
-    'bg-emerald-500'
+    value <= target ? 'bg-emerald-500' :
+    value <= target * 2 ? 'bg-blue-500' :
+    'bg-purple-500'
 
   return (
     <div className="relative h-2 bg-white/10 rounded-full overflow-visible">
@@ -225,13 +226,13 @@ function ClassCoverage({ items, targetCoverage }) {
             <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Abaixo de 75% da meta
           </span>
           <span className="text-xs text-gray-600 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> 75–100% da meta
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Saudável (75–100%)
           </span>
           <span className="text-xs text-gray-600 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Dentro da meta
+            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Excesso (100–200%)
           </span>
           <span className="text-xs text-gray-600 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Acima de 200% da meta
+            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Excesso alto (&gt;200%)
           </span>
           <span className="text-xs text-gray-500 ml-auto">Comprar / Saudável / Excesso / Sem prev.</span>
         </div>
