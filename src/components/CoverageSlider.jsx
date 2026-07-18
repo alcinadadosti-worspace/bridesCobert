@@ -5,7 +5,7 @@ import { CLASS_TARGETS } from '../utils/parseSpreadsheet'
 // "A 57 · B 50 · C 30 · E 30" — metas de cobertura por classe (geradas do mapa)
 const METAS_LABEL = Object.entries(CLASS_TARGETS).map(([k, v]) => `${k} ${v}`).join(' · ')
 
-function CoverageSlider({ value, onChange, leadTime = 15, onLeadTimeChange, compact = false }) {
+function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compact = false }) {
   const handleSliderChange = (e) => {
     onChange(parseInt(e.target.value, 10))
   }

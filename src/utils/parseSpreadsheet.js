@@ -271,7 +271,7 @@ export function metaDaClasse(classe, padrao) {
 // Cobre a demanda durante (meta da classe + prazo de entrega), descontando o estoque
 // já disponível ou a caminho (atual + trânsito + pedido pendente), nunca negativo.
 // Fórmula: Pedido = ceil(DDV × (meta + prazo) − (atual + trânsito + pendente)).
-export function calcPedidoSugerido(item, targetCoverage, leadTime = 15, isDescontinuado = false) {
+export function calcPedidoSugerido(item, targetCoverage, leadTime = 0, isDescontinuado = false) {
   // Descontinuados nunca geram compra; sem DDV não há como dimensionar a quantidade
   if (isDescontinuado) return 0
   if (!(item.ddvPrevisto > 0)) return 0
@@ -284,7 +284,7 @@ export function calcPedidoSugerido(item, targetCoverage, leadTime = 15, isDescon
   return pedido > 0 ? Math.ceil(pedido) : 0
 }
 
-export function calculateDecision(item, targetCoverage, leadTime = 15) {
+export function calculateDecision(item, targetCoverage, leadTime = 0) {
   // Meta de cobertura deste item = meta da sua classe (padrão = targetCoverage global)
   const meta = metaDaClasse(item.classe, targetCoverage)
 
@@ -473,7 +473,7 @@ export function coberturaAgregada(items) {
   return ddv > 0 ? Math.round((estoque / ddv) * 10) / 10 : 0
 }
 
-export function analyzeData(data, targetCoverage, leadTime = 15) {
+export function analyzeData(data, targetCoverage, leadTime = 0) {
   const analyzed = data.map(item => calculateDecision(item, targetCoverage, leadTime))
 
   // Agrupar por loja
@@ -562,7 +562,7 @@ export function analyzeData(data, targetCoverage, leadTime = 15) {
 }
 
 // Função para analisar oportunidades de transferência
-export function analyzeTransfers(data, targetCoverage, leadTime = 15) {
+export function analyzeTransfers(data, targetCoverage, leadTime = 0) {
   const analyzed = data.map(item => calculateDecision(item, targetCoverage, leadTime))
 
   // Agrupar por SKU

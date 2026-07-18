@@ -7,7 +7,7 @@ import Dashboard from './components/Dashboard'
 function App() {
   const [data, setData] = useState(null)
   const [targetCoverage, setTargetCoverage] = useState(57)
-  const [leadTime, setLeadTime] = useState(15)
+  const [leadTime, setLeadTime] = useState(0)
 
   const handleDataLoaded = (parsedData) => {
     setData(parsedData)
