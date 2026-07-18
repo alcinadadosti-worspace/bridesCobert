@@ -5,7 +5,7 @@ import DataTable from './DataTable'
 
 const THRESHOLDS = [120, 180, 365]
 
-function EstoqueParado({ items, targetCoverage }) {
+function EstoqueParado({ items, targetCoverage, editedQty = {}, onEditQty }) {
   const [threshold, setThreshold] = useState(180)
 
   // Total de SKUs por loja (denominador do "% do mix")
@@ -114,7 +114,7 @@ function EstoqueParado({ items, targetCoverage }) {
       </motion.div>
 
       {/* Items table (reuses the full table with sorting, filters and export) */}
-      <DataTable items={parado} targetCoverage={targetCoverage} />
+      <DataTable items={parado} targetCoverage={targetCoverage} editedQty={editedQty} onEditQty={onEditQty} />
     </div>
   )
 }

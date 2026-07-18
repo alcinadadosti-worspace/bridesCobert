@@ -148,6 +148,10 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
     [items]
   )
 
+  // Quantidade de compra editável pelo usuário (sobrepõe a sugestão calculada). Chaveado por item.id.
+  const [editedQty, setEditedQty] = useState({})
+  const handleEditQty = (id, value) => setEditedQty((prev) => ({ ...prev, [id]: value }))
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -389,7 +393,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
         {/* Content based on active tab */}
         <section>
           {activeTab === 'table' && (
-            <DataTable items={items} targetCoverage={targetCoverage} />
+            <DataTable items={items} targetCoverage={targetCoverage} editedQty={editedQty} onEditQty={handleEditQty} />
           )}
           {activeTab === 'transfers' && (
             <TransferSuggestions transfers={transfers} />
@@ -398,10 +402,10 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
             <ClassCoverage items={items} targetCoverage={targetCoverage} />
           )}
           {activeTab === 'parado' && (
-            <EstoqueParado items={items} targetCoverage={targetCoverage} />
+            <EstoqueParado items={items} targetCoverage={targetCoverage} editedQty={editedQty} onEditQty={handleEditQty} />
           )}
           {activeTab === 'ruptura' && (
-            <Ruptura items={items} targetCoverage={targetCoverage} />
+            <Ruptura items={items} targetCoverage={targetCoverage} editedQty={editedQty} onEditQty={handleEditQty} />
           )}
         </section>
       </main>

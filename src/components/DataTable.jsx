@@ -111,7 +111,32 @@ function StatusBadge({ status, urgency, excessLevel }) {
   )
 }
 
-function DataTable({ items, targetCoverage }) {
+// Célula de quantidade de compra editável — o valor editado sobrepõe a sugestão calculada.
+// Guarda o texto digitado (só dígitos, permite vazio) para não forçar "0" ao limpar.
+export function qtyEfetiva(item, editedQty) {
+  const v = editedQty[item.id]
+  return v != null ? (parseInt(v, 10) || 0) : item.pedidoSugerido
+}
+
+function QtyCell({ item, editedQty, onEditQty }) {
+  const raw = editedQty[item.id] ?? String(item.pedidoSugerido)
+  const isEdited = editedQty[item.id] !== undefined && (parseInt(raw, 10) || 0) !== item.pedidoSugerido
+  return (
+    <div className={`inline-flex items-center gap-1 px-1.5 py-1 rounded-lg border ${isEdited ? 'bg-amber-500/15 border-amber-500/40' : 'bg-primary-500/15 border-primary-500/25'}`}>
+      <ShoppingCart className={`w-3 h-3 shrink-0 ${isEdited ? 'text-amber-300' : 'text-primary-300'}`} />
+      <input
+        type="text"
+        inputMode="numeric"
+        value={raw}
+        onChange={(e) => onEditQty(item.id, e.target.value.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, ''))}
+        className={`w-14 bg-transparent text-sm font-bold text-right focus:outline-none ${isEdited ? 'text-amber-300' : 'text-primary-300'}`}
+        title={isEdited ? `Editado (sugestão: ${item.pedidoSugerido})` : 'Editar quantidade a comprar'}
+      />
+    </div>
+  )
+}
+
+function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
@@ -255,7 +280,7 @@ function DataTable({ items, targetCoverage }) {
       item.ddvPrevisto,
       item.coberturaAtual,
       item.coberturaProjetada,
-      item.pedidoSugerido,
+      qtyEfetiva(item, editedQty),
       item.status,
       item.coverageGap,
       item.excessDays || 0,
@@ -669,7 +694,9 @@ function DataTable({ items, targetCoverage }) {
                     )}
                   </td>
                   <td className="px-3 py-3">
-                    {item.pedidoSugerido > 0 ? (
+                    {onEditQty ? (
+                      <QtyCell item={item} editedQty={editedQty} onEditQty={onEditQty} />
+                    ) : item.pedidoSugerido > 0 ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg
                         bg-primary-500/15 border border-primary-500/25 text-sm font-bold text-primary-300">
                         <ShoppingCart className="w-3 h-3" />

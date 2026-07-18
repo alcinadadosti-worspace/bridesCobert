@@ -158,22 +158,18 @@ export function processSheet(jsonData, sheetIndex) {
       ? Math.round(parseNumber(row[columnIndices.compraInteligente]))
       : null
 
-    const estoqueTotal = estoqueAtual + estoqueTransito + pedidoPendente
-
-    // Cobertura projetada: usa coluna da planilha, depois DDV, depois cobertura atual
-    let coberturaProjetada = columnIndices.coberturaProjetada !== -1
-      ? parseNumber(row[columnIndices.coberturaProjetada])
-      : 0
-
-    if (coberturaProjetada === 0) {
-      if (ddvPrevisto > 0 && estoqueTotal > 0) {
-        coberturaProjetada = estoqueTotal / ddvPrevisto
-      } else if (coberturaAtual > 0 && estoqueAtual > 0) {
-        const velocidadeVenda = estoqueAtual / coberturaAtual
-        coberturaProjetada = estoqueTotal / velocidadeVenda
-      } else {
-        coberturaProjetada = coberturaAtual
-      }
+    // Cobertura = (estoque atual + trânsito) / DDV. O pedido pendente NÃO entra —
+    // não é estoque disponível para vender (mesma regra da cobertura de loja/classe).
+    const estoqueDisponivel = estoqueAtual + estoqueTransito
+    let coberturaProjetada
+    if (ddvPrevisto > 0) {
+      coberturaProjetada = estoqueDisponivel / ddvPrevisto
+    } else if (coberturaAtual > 0 && estoqueAtual > 0) {
+      // Sem DDV: deriva da velocidade implícita na cobertura atual
+      const velocidadeVenda = estoqueAtual / coberturaAtual
+      coberturaProjetada = estoqueDisponivel / velocidadeVenda
+    } else {
+      coberturaProjetada = coberturaAtual
     }
 
     const pdv = columnIndices.pdv !== -1
@@ -277,9 +273,9 @@ export function calcPedidoSugerido(item, targetCoverage, leadTime = 0, isDescont
   if (!(item.ddvPrevisto > 0)) return 0
 
   const diasAlvo = targetCoverage + leadTime
-  // Desconta tudo que já vai suprir a demanda: em mãos + em trânsito + pedidos pendentes.
-  // (Descontar só o estoque atual super-dimensionava, recomprando o que já está a caminho.)
-  const disponivel = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
+  // Disponível = estoque em mãos + em trânsito. O pedido pendente NÃO entra (não conta
+  // como estoque), igual à cobertura. Ainda desconta o trânsito para não recomprar o que já vem.
+  const disponivel = item.estoqueAtual + item.estoqueTransito
   const pedido = item.ddvPrevisto * diasAlvo - disponivel
   return pedido > 0 ? Math.ceil(pedido) : 0
 }
@@ -289,7 +285,8 @@ export function calculateDecision(item, targetCoverage, leadTime = 0) {
   const meta = metaDaClasse(item.classe, targetCoverage)
 
   // Calcular estoque total (atual + trânsito + pendente)
-  const estoqueTotal = item.estoqueAtual + item.estoqueTransito + item.pedidoPendente
+  // Estoque disponível = em mãos + em trânsito. Pedido pendente NÃO conta como estoque.
+  const estoqueDisponivel = item.estoqueAtual + item.estoqueTransito
 
   // Verificar se o produto está em descontinuação/descontinuado
   const faseNormalizada = item.faseProduto?.toLowerCase() || ''
@@ -360,7 +357,7 @@ export function calculateDecision(item, targetCoverage, leadTime = 0) {
   // Sem isso, a cobertura aproximada marcava "Comprar/Urgente" itens que o sistema pede comprar 0.
   if (item.compraInteligente != null) {
     if (pedidoSugerido > 0) {
-      const urgency = (estoqueTotal === 0 || item.coberturaProjetada < meta * 0.5) ? 'high' : 'medium'
+      const urgency = (estoqueDisponivel === 0 || item.coberturaProjetada < meta * 0.5) ? 'high' : 'medium'
       return {
         ...item,
         metaCobertura: meta,
@@ -394,7 +391,7 @@ export function calculateDecision(item, targetCoverage, leadTime = 0) {
   }
 
   // Se estoque total é 0, forçar urgência máxima independente da cobertura projetada da planilha
-  if (estoqueTotal === 0) {
+  if (estoqueDisponivel === 0) {
     return {
       ...item,
       metaCobertura: meta,
