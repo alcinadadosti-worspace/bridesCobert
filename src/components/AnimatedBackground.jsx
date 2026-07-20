@@ -4,17 +4,17 @@ function AnimatedBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
       {/* Base gradient */}
-      <div className="absolute inset-0 bg-[#0a0a0f]" />
+      <div className="absolute inset-0 bg-[#0b110d]" />
 
       {/* Animated mesh gradients */}
       <motion.div
         className="absolute inset-0"
         animate={{
           background: [
-            'radial-gradient(at 0% 0%, hsla(228, 100%, 74%, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, hsla(189, 100%, 56%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(340, 100%, 76%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(269, 100%, 77%, 0.1) 0px, transparent 50%)',
-            'radial-gradient(at 100% 0%, hsla(228, 100%, 74%, 0.15) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(189, 100%, 56%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 0%, hsla(340, 100%, 76%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(269, 100%, 77%, 0.1) 0px, transparent 50%)',
-            'radial-gradient(at 50% 100%, hsla(228, 100%, 74%, 0.15) 0px, transparent 50%), radial-gradient(at 50% 0%, hsla(189, 100%, 56%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(340, 100%, 76%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 50%, hsla(269, 100%, 77%, 0.1) 0px, transparent 50%)',
-            'radial-gradient(at 0% 0%, hsla(228, 100%, 74%, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, hsla(189, 100%, 56%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(340, 100%, 76%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(269, 100%, 77%, 0.1) 0px, transparent 50%)',
+            'radial-gradient(at 0% 0%, hsla(150, 55%, 45%, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, hsla(43, 65%, 52%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(150, 45%, 42%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(43, 60%, 50%, 0.1) 0px, transparent 50%)',
+            'radial-gradient(at 100% 0%, hsla(150, 55%, 45%, 0.15) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(43, 65%, 52%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 0%, hsla(150, 45%, 42%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(43, 60%, 50%, 0.1) 0px, transparent 50%)',
+            'radial-gradient(at 50% 100%, hsla(150, 55%, 45%, 0.15) 0px, transparent 50%), radial-gradient(at 50% 0%, hsla(43, 65%, 52%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(150, 45%, 42%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 50%, hsla(43, 60%, 50%, 0.1) 0px, transparent 50%)',
+            'radial-gradient(at 0% 0%, hsla(150, 55%, 45%, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, hsla(43, 65%, 52%, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(150, 45%, 42%, 0.1) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(43, 60%, 50%, 0.1) 0px, transparent 50%)',
           ],
         }}
         transition={{
@@ -28,7 +28,7 @@ function AnimatedBackground() {
       <motion.div
         className="absolute w-[600px] h-[600px] rounded-full opacity-30"
         style={{
-          background: 'radial-gradient(circle, rgba(99, 91, 255, 0.4) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(46, 138, 92, 0.38) 0%, transparent 70%)',
           filter: 'blur(60px)',
           left: '10%',
           top: '20%',
@@ -48,7 +48,7 @@ function AnimatedBackground() {
       <motion.div
         className="absolute w-[500px] h-[500px] rounded-full opacity-20"
         style={{
-          background: 'radial-gradient(circle, rgba(0, 212, 255, 0.4) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(207, 162, 58, 0.28) 0%, transparent 70%)',
           filter: 'blur(60px)',
           right: '10%',
           top: '10%',
@@ -68,7 +68,7 @@ function AnimatedBackground() {
       <motion.div
         className="absolute w-[400px] h-[400px] rounded-full opacity-20"
         style={{
-          background: 'radial-gradient(circle, rgba(255, 107, 157, 0.3) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(28, 104, 70, 0.3) 0%, transparent 70%)',
           filter: 'blur(60px)',
           left: '50%',
           bottom: '10%',

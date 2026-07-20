@@ -16,8 +16,8 @@ function statusDe(usadas, necessarias) {
 
 function SummaryTile({ label, value, icon: Icon, tone }) {
   const map = {
-    cyan: ['text-cyan-400', 'bg-cyan-500/15'],
-    violet: ['text-violet-300', 'bg-violet-500/15'],
+    gold: ['text-gold-400', 'bg-gold-500/15'],
+    green: ['text-primary-400', 'bg-primary-500/15'],
   }
   const [tc, bc] = map[tone] || ['text-gray-300', 'bg-white/10']
   return (
@@ -60,7 +60,7 @@ function StoreCard({ u, valores, onSet, usadas }) {
       {/* header */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2 min-w-0">
-          <Store className="w-4 h-4 text-cyan-400 shrink-0" />
+          <Store className="w-4 h-4 text-gold-400 shrink-0" />
           <span className="text-white font-semibold truncate">{u.unidade}</span>
         </div>
         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${s.badge} ${s.text}`}>
@@ -111,7 +111,7 @@ function StoreCard({ u, valores, onSet, usadas }) {
               value={valores?.[k] ?? ''}
               onChange={(e) => onSet(k, e.target.value)}
               placeholder="0"
-              className="w-full px-2 py-1.5 text-center text-white bg-[#1a1a2e] border border-white/10 rounded-lg
+              className="w-full px-2 py-1.5 text-center text-white bg-[#0f1a14] border border-white/10 rounded-lg
                 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
             />
           </div>
@@ -121,8 +121,10 @@ function StoreCard({ u, valores, onSet, usadas }) {
   )
 }
 
-// Cores validadas (validate_palette.js, modo dark): pares CVD-seguros na faixa de luminosidade
-const COR = { necessarias: '#0ea5b7', usadas: '#8b5cf6', regulares: '#3b82f6', especiais: '#ec4899' }
+// Cores da marca — verde nobre + ouro (validate_palette.js, modo dark).
+// Visão normal e CVD OK com os rótulos diretos das barras; o ouro fica no limite da
+// faixa de luminosidade de propósito, por ser cor de marca (contraste/separação preservados).
+const COR = { necessarias: '#bd932e', usadas: '#3aa870', regulares: '#3aa870', especiais: '#bd932e' }
 
 function LegItem({ cor, label }) {
   return (
@@ -237,7 +239,7 @@ function Sacolas() {
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-1">
-          <ShoppingBag className="w-5 h-5 text-cyan-400" />
+          <ShoppingBag className="w-5 h-5 text-gold-400" />
           <h3 className="text-lg font-semibold text-white">Conferência de Sacolas</h3>
         </div>
         <p className="text-xs text-gray-500 mb-5">
@@ -275,7 +277,7 @@ function Sacolas() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-2 min-w-0">
-            <ShoppingBag className="w-5 h-5 text-cyan-400 shrink-0" />
+            <ShoppingBag className="w-5 h-5 text-gold-400 shrink-0" />
             <h3 className="text-lg font-semibold text-white">Conferência de Sacolas</h3>
             <span className="text-xs text-gray-500 ml-1 truncate max-w-[220px]" title={fileName}>{fileName}</span>
           </div>
@@ -288,8 +290,8 @@ function Sacolas() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <SummaryTile label="Sacolas necessárias" value={totalNec} icon={ShoppingBag} tone="cyan" />
-          <SummaryTile label="Sacolas usadas (informadas)" value={totalUsadas} icon={Package} tone="violet" />
+          <SummaryTile label="Sacolas necessárias" value={totalNec} icon={ShoppingBag} tone="gold" />
+          <SummaryTile label="Sacolas usadas (informadas)" value={totalUsadas} icon={Package} tone="green" />
           <StatusTile usadas={totalUsadas} necessarias={totalNec} />
         </div>
 
@@ -301,7 +303,7 @@ function Sacolas() {
       {/* Gráficos */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-5">
-          <BarChart3 className="w-5 h-5 text-cyan-400" />
+          <BarChart3 className="w-5 h-5 text-gold-400" />
           <h4 className="text-base font-semibold text-white">Visão geral</h4>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">

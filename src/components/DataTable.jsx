@@ -352,7 +352,7 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   setCurrentPage(1)
                 }}
                 className="w-full sm:w-48 pl-9 pr-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   placeholder-gray-500
                 "
@@ -369,10 +369,10 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   setCurrentPage(1)
                 }}
                 className="w-full sm:w-auto pl-9 pr-6 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todos</option>
@@ -392,10 +392,10 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   setCurrentPage(1)
                 }}
                 className="w-full sm:w-auto px-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Lojas</option>
@@ -414,10 +414,10 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   setCurrentPage(1)
                 }}
                 className="w-full sm:w-auto px-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Classes</option>
@@ -436,10 +436,10 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   setCurrentPage(1)
                 }}
                 className="w-full sm:w-auto px-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Fases</option>
@@ -465,10 +465,10 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   setCurrentPage(1)
                 }}
                 className="w-full sm:w-auto pl-9 pr-6 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="">Ordenar por...</option>
@@ -644,7 +644,7 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                         <span className={`
                           text-[10px] mt-0.5
                           ${item.faseProduto === 'Lançamento' ? 'text-pink-400' :
-                            item.faseProduto === 'Maduro' ? 'text-cyan-400' :
+                            item.faseProduto === 'Maduro' ? 'text-gold-400' :
                             'text-gray-500'}
                         `}>
                           {item.faseProduto}
@@ -652,7 +652,7 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-sm text-cyan-400 truncate" title={item.loja}>
+                  <td className="px-3 py-3 text-sm text-gold-400 truncate" title={item.loja}>
                     {item.loja}
                   </td>
                   <td className="px-3 py-3 text-sm text-white font-medium">
@@ -666,7 +666,7 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                   </td>
                   <td className="px-3 py-3 text-sm">
                     {item.ddvPrevisto > 0 ? (
-                      <span className="text-violet-300 font-medium">{item.ddvPrevisto}</span>
+                      <span className="text-gold-300 font-medium">{item.ddvPrevisto}</span>
                     ) : (
                       <span className="text-gray-600" title="Sem DDV previsto (lançamento)">—</span>
                     )}
@@ -728,10 +728,10 @@ function DataTable({ items, targetCoverage, editedQty = {}, onEditQty }) {
                 setCurrentPage(1)
               }}
               className="px-2 py-1 text-sm text-white
-                bg-[#1a1a2e] border border-white/10 rounded-lg
+                bg-[#0f1a14] border border-white/10 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-500/50
                 cursor-pointer
-                [&>option]:bg-[#1a1a2e] [&>option]:text-white
+                [&>option]:bg-[#0f1a14] [&>option]:text-white
               "
             >
               {PAGE_SIZES.map((size) => (

@@ -85,7 +85,7 @@ function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compa
               max="90"
               className="w-14 px-2 py-1 text-center text-sm font-semibold text-white
                 bg-white/5 border border-white/10 rounded-lg
-                focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50
+                focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50
               "
             />
             <span className="text-sm text-gray-400">d</span>
@@ -94,7 +94,7 @@ function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compa
 
         {/* Horizonte do pedido */}
         <span className="text-xs text-gray-500">
-          Pedido cobre <span className="text-cyan-300 font-semibold">{totalDias}d</span>
+          Pedido cobre <span className="text-gold-300 font-semibold">{totalDias}d</span>
         </span>
       </div>
     )
@@ -145,7 +145,7 @@ function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compa
 
           {/* Filled track */}
           <motion.div
-            className="absolute top-1/2 left-0 h-2 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary-500 to-cyan-400"
+            className="absolute top-1/2 left-0 h-2 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary-500 to-gold-400"
             style={{ width: `${(value / 365) * 100}%` }}
             layoutId="slider-fill"
           />
@@ -185,8 +185,8 @@ function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compa
         {/* Prazo de entrega */}
         <div className="flex items-center justify-between mt-5 pt-5 border-t border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-              <Truck className="w-5 h-5 text-cyan-400" />
+            <div className="w-10 h-10 rounded-xl bg-gold-500/20 flex items-center justify-center">
+              <Truck className="w-5 h-5 text-gold-400" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-white">Prazo de entrega</h3>
@@ -203,7 +203,7 @@ function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compa
               max="90"
               className="w-20 px-3 py-2 text-center text-lg font-bold text-white
                 bg-white/5 border border-white/10 rounded-xl
-                focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50
+                focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50
                 transition-all duration-200
               "
             />
@@ -217,7 +217,7 @@ function CoverageSlider({ value, onChange, leadTime = 0, onLeadTimeChange, compa
         {/* Horizonte total do pedido */}
         <p className="text-xs text-gray-400 mt-4 text-center">
           O pedido de compra cobre{' '}
-          <span className="text-cyan-300 font-semibold">{totalDias} dias</span>{' '}
+          <span className="text-gold-300 font-semibold">{totalDias} dias</span>{' '}
           (cobertura + prazo)
         </p>
       </div>

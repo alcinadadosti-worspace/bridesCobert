@@ -145,7 +145,7 @@ function ClassCoverage({ items, targetCoverage }) {
       >
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-cyan-400" />
+            <Layers className="w-5 h-5 text-gold-400" />
             <h3 className="text-lg font-semibold text-white">Cobertura por Classe</h3>
             <span className="text-xs text-gray-500 ml-1">
               (meta por classe{selectedStore !== 'all' ? ` · ${selectedStore}` : ''})
@@ -156,10 +156,10 @@ function ClassCoverage({ items, targetCoverage }) {
               value={selectedStore}
               onChange={(e) => setSelectedStore(e.target.value)}
               className="pl-3 pr-9 py-2 text-sm text-white
-                bg-[#1a1a2e] border border-white/10 rounded-lg
+                bg-[#0f1a14] border border-white/10 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                 appearance-none cursor-pointer
-                [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
               "
             >
               <option value="all">Todas as lojas</option>
@@ -201,7 +201,7 @@ function ClassCoverage({ items, targetCoverage }) {
 
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-gray-500">
-                  DDV médio: <span className="text-violet-300 font-medium">{c.avgDDV || '—'}</span>
+                  DDV médio: <span className="text-gold-300 font-medium">{c.avgDDV || '—'}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="text-red-400" title="Comprar">{c.needToBuy}</span>
@@ -246,7 +246,7 @@ function ClassCoverage({ items, targetCoverage }) {
         className="glass rounded-2xl p-6"
       >
         <div className="flex items-center gap-2 mb-5">
-          <Grid3x3 className="w-5 h-5 text-cyan-400" />
+          <Grid3x3 className="w-5 h-5 text-gold-400" />
           <h3 className="text-lg font-semibold text-white">Cobertura média: Classe × Loja</h3>
           <span className="text-xs text-gray-500 ml-1">(dias)</span>
         </div>
@@ -255,7 +255,7 @@ function ClassCoverage({ items, targetCoverage }) {
           <table className="w-full min-w-[640px] border-collapse">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-[#1a1a2e] px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <th className="sticky left-0 z-10 bg-[#0f1a14] px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
                   Classe
                 </th>
                 {matrix.stores.map(loja => (
@@ -272,7 +272,7 @@ function ClassCoverage({ items, targetCoverage }) {
             <tbody>
               {classes.map(c => (
                 <tr key={c} className="border-t border-white/5">
-                  <td className="sticky left-0 z-10 bg-[#1a1a2e] px-3 py-2 whitespace-nowrap">
+                  <td className="sticky left-0 z-10 bg-[#0f1a14] px-3 py-2 whitespace-nowrap">
                     <span className={`px-2 py-0.5 text-xs font-bold rounded border ${classBadgeColor(c)}`}>
                       {c === 'Sem classe' ? '—' : c}
                     </span>

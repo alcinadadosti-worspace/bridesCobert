@@ -10,27 +10,35 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        // Verde nobre — cor da marca (base / acento principal)
         primary: {
-          50: '#f0f4ff',
-          100: '#e0e9ff',
-          200: '#c7d6fe',
-          300: '#a4b8fc',
-          400: '#818cf8',
-          500: '#635bff',
-          600: '#5046e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
+          50: '#ecf7f0',
+          100: '#d0ecda',
+          200: '#a4d9bc',
+          300: '#6ebf95',
+          400: '#43a173',
+          500: '#237a50',
+          600: '#1b6241',
+          700: '#164e35',
+          800: '#133e2b',
+          900: '#0f2f22',
         },
-        stripe: {
-          purple: '#635bff',
-          blue: '#0a2540',
-          cyan: '#00d4ff',
-          pink: '#ff6b9d',
-        }
+        // Ouro — acento (bate com a logo)
+        gold: {
+          50: '#faf5e6',
+          100: '#f3e7c2',
+          200: '#e9d296',
+          300: '#dcb85f',
+          400: '#cfa23a',
+          500: '#b98a2c',
+          600: '#9c7025',
+          700: '#7d5820',
+          800: '#66481f',
+          900: '#553c1d',
+        },
       },
       backgroundImage: {
-        'mesh-gradient': 'radial-gradient(at 40% 20%, hsla(228,100%,74%,0.3) 0px, transparent 50%), radial-gradient(at 80% 0%, hsla(189,100%,56%,0.2) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(355,100%,93%,0.2) 0px, transparent 50%), radial-gradient(at 80% 50%, hsla(340,100%,76%,0.2) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(269,100%,77%,0.2) 0px, transparent 50%), radial-gradient(at 80% 100%, hsla(240,100%,70%,0.15) 0px, transparent 50%), radial-gradient(at 0% 0%, hsla(269,100%,77%,0.2) 0px, transparent 50%)',
+        'mesh-gradient': 'radial-gradient(at 40% 20%, hsla(150,55%,45%,0.22) 0px, transparent 50%), radial-gradient(at 80% 0%, hsla(43,65%,55%,0.16) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(150,45%,40%,0.14) 0px, transparent 50%), radial-gradient(at 80% 50%, hsla(43,60%,50%,0.14) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(150,50%,35%,0.16) 0px, transparent 50%), radial-gradient(at 80% 100%, hsla(43,55%,45%,0.12) 0px, transparent 50%), radial-gradient(at 0% 0%, hsla(150,50%,40%,0.16) 0px, transparent 50%)',
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
@@ -48,7 +56,7 @@ export default {
         },
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+        'glass': '0 8px 32px 0 rgba(10, 25, 18, 0.25)',
         'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
       },

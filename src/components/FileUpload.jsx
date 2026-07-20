@@ -11,14 +11,10 @@ function FileUpload({ onDataLoaded }) {
 
   const handleFile = async (file) => {
     setIsProcessing(true)
-
     try {
       const data = await parseSpreadsheet(file)
       setIsSuccess(true)
-
-      setTimeout(() => {
-        onDataLoaded(data)
-      }, 800)
+      setTimeout(() => onDataLoaded(data), 800)
     } catch (error) {
       setIsProcessing(false)
       alert(error.message)
@@ -28,80 +24,35 @@ function FileUpload({ onDataLoaded }) {
   const { isDragging, error, clearError, handlers, handleFileInput } = useFileDrop(handleFile)
 
   const handleClick = () => {
-    if (!isProcessing) {
-      fileInputRef.current?.click()
-    }
+    if (!isProcessing) fileInputRef.current?.click()
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.3 }}
-      className="w-full max-w-2xl mx-auto"
-    >
-      <motion.div
+    <div className="w-full">
+      <div
         {...handlers}
         onClick={handleClick}
-        className={`
-          relative overflow-hidden rounded-2xl cursor-pointer
-          transition-all duration-300 ease-out
+        className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-colors duration-200
           ${isDragging
-            ? 'scale-[1.02] ring-2 ring-primary-500/50'
-            : 'hover:scale-[1.01]'
-          }
-        `}
-        whileHover={{ boxShadow: '0 25px 50px -12px rgba(99, 91, 255, 0.25)' }}
+            ? 'border-primary-500/70 bg-primary-500/[0.06]'
+            : 'border-white/15 hover:border-primary-500/40 hover:bg-white/[0.03]'
+          }`}
       >
-        {/* Background */}
-        <div className={`
-          absolute inset-0 glass
-          ${isDragging ? 'bg-primary-500/10' : 'bg-white/[0.03]'}
-          transition-colors duration-300
-        `} />
-
-        {/* Animated border */}
-        <motion.div
-          className="absolute inset-0 rounded-2xl"
-          style={{
-            background: isDragging
-              ? 'linear-gradient(90deg, rgba(99, 91, 255, 0.5) 0%, rgba(0, 212, 255, 0.5) 50%, rgba(255, 107, 157, 0.5) 100%)'
-              : 'linear-gradient(90deg, rgba(99, 91, 255, 0.2) 0%, rgba(0, 212, 255, 0.2) 50%, rgba(255, 107, 157, 0.2) 100%)',
-            padding: '1px',
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-          }}
-          animate={{
-            backgroundPosition: ['0% 0%', '100% 100%'],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            repeatType: 'reverse',
-          }}
-        />
-
-        {/* Content */}
-        <div className="relative p-12">
+        <div className="px-6 py-10">
           <AnimatePresence mode="wait">
             {isSuccess ? (
               <motion.div
                 key="success"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="flex flex-col items-center text-center"
               >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', damping: 10 }}
-                  className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-4"
-                >
-                  <CheckCircle className="w-10 h-10 text-green-400" />
-                </motion.div>
-                <p className="text-xl font-semibold text-white">Planilha carregada!</p>
-                <p className="text-gray-400 mt-2">Processando dados...</p>
+                <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center mb-3">
+                  <CheckCircle className="w-7 h-7 text-emerald-400" />
+                </div>
+                <p className="text-base font-semibold text-white">Planilha carregada</p>
+                <p className="text-sm text-gray-400 mt-1">Processando dados…</p>
               </motion.div>
             ) : isProcessing ? (
               <motion.div
@@ -111,15 +62,11 @@ function FileUpload({ onDataLoaded }) {
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center text-center"
               >
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-20 h-20 rounded-full bg-primary-500/20 flex items-center justify-center mb-4"
-                >
-                  <Loader2 className="w-10 h-10 text-primary-400" />
-                </motion.div>
-                <p className="text-xl font-semibold text-white">Processando planilha...</p>
-                <p className="text-gray-400 mt-2">Analisando seus dados</p>
+                <div className="w-14 h-14 rounded-full bg-primary-500/15 flex items-center justify-center mb-3">
+                  <Loader2 className="w-7 h-7 text-primary-400 animate-spin" />
+                </div>
+                <p className="text-base font-semibold text-white">Processando planilha…</p>
+                <p className="text-sm text-gray-400 mt-1">Analisando seus dados</p>
               </motion.div>
             ) : (
               <motion.div
@@ -129,52 +76,27 @@ function FileUpload({ onDataLoaded }) {
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center text-center"
               >
-                <motion.div
-                  animate={isDragging ? { scale: 1.1, y: -10 } : { scale: 1, y: 0 }}
-                  transition={{ type: 'spring', damping: 15 }}
-                  className={`
-                    w-20 h-20 rounded-2xl mb-6 flex items-center justify-center
-                    ${isDragging
-                      ? 'bg-primary-500/30'
-                      : 'bg-gradient-to-br from-primary-500/20 to-cyan-500/20'
-                    }
-                    transition-colors duration-300
-                  `}
+                <div
+                  className={`w-14 h-14 rounded-xl mb-4 flex items-center justify-center transition-colors
+                    ${isDragging ? 'bg-primary-500/25' : 'bg-white/5 border border-white/10'}`}
                 >
                   {isDragging ? (
-                    <FileSpreadsheet className="w-10 h-10 text-primary-400" />
+                    <FileSpreadsheet className="w-7 h-7 text-primary-300" />
                   ) : (
-                    <Upload className="w-10 h-10 text-primary-400" />
+                    <Upload className="w-7 h-7 text-primary-400" />
                   )}
-                </motion.div>
-
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  {isDragging ? 'Solte o arquivo aqui' : 'Arraste sua planilha'}
-                </h3>
-
-                <p className="text-gray-400 mb-4">
-                  ou{' '}
-                  <span className="text-primary-400 hover:text-primary-300 transition-colors">
-                    clique para selecionar
-                  </span>
-                </p>
-
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <FileSpreadsheet className="w-4 h-4" />
-                    Excel (.xlsx, .xls)
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <FileSpreadsheet className="w-4 h-4" />
-                    CSV
-                  </span>
                 </div>
+                <h3 className="text-base font-semibold text-white mb-1">
+                  {isDragging ? 'Solte o arquivo aqui' : 'Arraste a planilha ou clique para selecionar'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Consulta de estoque em Excel (.xlsx, .xls) ou CSV
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -182,16 +104,15 @@ function FileUpload({ onDataLoaded }) {
           onChange={handleFileInput}
           className="hidden"
         />
-      </motion.div>
+      </div>
 
-      {/* Error message */}
       <AnimatePresence>
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
+            className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
           >
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <p className="text-red-300 text-sm">{error}</p>
@@ -204,7 +125,7 @@ function FileUpload({ onDataLoaded }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   )
 }
 

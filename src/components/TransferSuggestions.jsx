@@ -56,7 +56,7 @@ function TransferCard({ transfer, index }) {
                 <span className={`
                   px-2 py-0.5 text-xs font-medium rounded-full
                   ${transfer.faseProduto === 'Lançamento' ? 'bg-pink-500/20 text-pink-400' :
-                    transfer.faseProduto === 'Maduro' ? 'bg-cyan-500/20 text-cyan-400' :
+                    transfer.faseProduto === 'Maduro' ? 'bg-gold-500/20 text-gold-400' :
                     'bg-gray-500/20 text-gray-400'}
                 `}>
                   {transfer.faseProduto}
@@ -319,7 +319,7 @@ function TransferSuggestions({ transfers }) {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Store className="w-5 h-5 text-cyan-400" />
+              <Store className="w-5 h-5 text-gold-400" />
               Oportunidades de Transferência
             </h2>
             <p className="text-sm text-gray-400">
@@ -342,7 +342,7 @@ function TransferSuggestions({ transfers }) {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full sm:w-48 pl-9 pr-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   placeholder-gray-500
                 "
@@ -356,10 +356,10 @@ function TransferSuggestions({ transfers }) {
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
                 className="w-full sm:w-auto pl-9 pr-6 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Prioridades</option>
@@ -374,10 +374,10 @@ function TransferSuggestions({ transfers }) {
                 value={filterLoja}
                 onChange={(e) => setFilterLoja(e.target.value)}
                 className="w-full sm:w-auto px-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Lojas</option>
@@ -393,10 +393,10 @@ function TransferSuggestions({ transfers }) {
                 value={filterClasse}
                 onChange={(e) => setFilterClasse(e.target.value)}
                 className="w-full sm:w-auto px-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Classes</option>
@@ -412,10 +412,10 @@ function TransferSuggestions({ transfers }) {
                 value={filterFase}
                 onChange={(e) => setFilterFase(e.target.value)}
                 className="w-full sm:w-auto px-3 py-2 text-sm text-white
-                  bg-[#1a1a2e] border border-white/10 rounded-lg
+                  bg-[#0f1a14] border border-white/10 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                   appearance-none cursor-pointer
-                  [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                  [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
                 "
               >
                 <option value="all">Todas Fases</option>

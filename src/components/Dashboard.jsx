@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart, AlertOctagon, ShoppingBag } from 'lucide-react'
+import { RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart, AlertOctagon, ShoppingBag } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
@@ -10,6 +10,7 @@ import Ruptura from './Ruptura'
 import Sacolas from './Sacolas'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
+import logoUrl from '../assets/logo.png'
 
 function CoverageBar({ value, target, max }) {
   const cappedValue = Math.min(value, max)
@@ -49,7 +50,7 @@ function StoreCoverageSection({ summary, targetCoverage }) {
       className="glass rounded-2xl p-6"
     >
       <div className="flex items-center gap-2 mb-5">
-        <BarChart2 className="w-5 h-5 text-cyan-400" />
+        <BarChart2 className="w-5 h-5 text-gold-400" />
         <h3 className="text-lg font-semibold text-white">Cobertura por Loja</h3>
         <span className="text-xs text-gray-500 ml-1">(meta ponderada por classe: ~{metaGeral}d)</span>
       </div>
@@ -166,14 +167,14 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
         <div className="w-full px-4 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <motion.div
+              <motion.img
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.2 }}
-                className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-400 flex items-center justify-center"
-              >
-                <Sparkles className="w-5 h-5 text-white" />
-              </motion.div>
+                src={logoUrl}
+                alt="Logo"
+                className="w-10 h-10 object-contain"
+              />
               <div>
                 <h1 className="text-xl font-bold text-white">Supply Flow</h1>
                 <p className="text-sm text-gray-400">Análise de Decisão de Compras</p>
@@ -228,10 +229,10 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
             </span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full
-            bg-cyan-500/10 border border-cyan-500/20"
+            bg-gold-500/10 border border-gold-500/20"
           >
-            <ShoppingCart className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm text-cyan-300">
+            <ShoppingCart className="w-4 h-4 text-gold-400" />
+            <span className="text-sm text-gold-300">
               {summary.hasCompraInteligente
                 ? 'Sugestão de compra: Compra inteligente (da planilha)'
                 : 'Sugestão de compra: calculada (cobertura + prazo)'}
@@ -338,7 +339,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
               {transfers.length > 0 && (
                 <span className={`
                   px-1.5 py-0.5 text-xs rounded-full
-                  ${activeTab === 'transfers' ? 'bg-white/20' : 'bg-cyan-500/20 text-cyan-400'}
+                  ${activeTab === 'transfers' ? 'bg-white/20' : 'bg-gold-500/20 text-gold-400'}
                 `}>
                   {transfers.length}
                 </span>

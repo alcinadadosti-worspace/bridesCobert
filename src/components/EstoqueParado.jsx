@@ -54,10 +54,10 @@ function EstoqueParado({ items, targetCoverage, editedQty = {}, onEditQty }) {
               value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
               className="pl-3 pr-9 py-2 text-sm text-white
-                bg-[#1a1a2e] border border-white/10 rounded-lg
+                bg-[#0f1a14] border border-white/10 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
                 appearance-none cursor-pointer
-                [&>option]:bg-[#1a1a2e] [&>option]:text-white [&>option]:py-2
+                [&>option]:bg-[#0f1a14] [&>option]:text-white [&>option]:py-2
               "
             >
               {THRESHOLDS.map(t => (
