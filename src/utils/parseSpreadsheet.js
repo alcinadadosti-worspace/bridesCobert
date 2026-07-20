@@ -649,3 +649,91 @@ export function analyzeTransfers(data, targetCoverage, leadTime = 0) {
 
   return transferOpportunities
 }
+
+// ==================== ANÁLISE DE SACOLAS ====================
+// Classifica um item pela descrição para a regra de sacolas:
+//  - 'suporte'  = suporte à venda (NÃO conta como item)
+//  - 'especial' = Kit/Combo/Estojo (1 sacola por item)
+//  - 'regular'  = produto normal (a cada 3, 1 sacola)
+export function classificaSacolaItem(descricao) {
+  const d = normalizeString(descricao) // minúsculo, sem acento
+  if (/catalogo/.test(d) || /\bguia\b/.test(d) || /demonstrador/.test(d) || /\bdem /.test(d)
+    || /\bsacola/.test(d) || /flac/.test(d) || /\bsch /.test(d)) return 'suporte'
+  if (/\bkit/.test(d) || /\bcomb/.test(d) || /\bestojo/.test(d) || /\bestj/.test(d)) return 'especial'
+  return 'regular'
+}
+
+// Lê uma aba nos dois formatos aceitos:
+//  - itens_month: Unidade, SKU, Descrição, Qtd
+//  - presencial:  Canal de distribuição (13706/13707 -> loja), Código Produto, Produto, Qtde
+function processSacolasSheet(jsonData) {
+  if (jsonData.length < 2) return []
+  const H = jsonData[0].map(h => normalizeString(h))
+  const idx = (...names) => {
+    for (const n of names) { const i = H.indexOf(normalizeString(n)); if (i !== -1) return i }
+    return -1
+  }
+  const iCanal = idx('canal de distribuicao')
+  const presencial = iCanal !== -1
+  const iUni = presencial ? iCanal : idx('unidade')
+  const iSku = idx('codigo produto', 'sku')
+  const iDesc = idx('produto', 'descricao')
+  const iQtd = idx('qtde', 'qtd')
+  if (iUni === -1 || iSku === -1 || iDesc === -1 || iQtd === -1) return []
+
+  const out = []
+  for (let r = 1; r < jsonData.length; r++) {
+    const row = jsonData[r]
+    if (!row || !row[iSku]) continue
+    let unidade = (row[iUni] ?? '').toString().trim()
+    if (presencial) {
+      const m = unidade.match(/^\s*(\d+)/) // pega o código do canal (ex.: "13706 - ACQUA...")
+      unidade = m ? getStoreName(parseNumber(m[1])) : unidade
+    }
+    if (!unidade) continue
+    // limpa lixo do rodapé "página 2/2 Picking List..." que às vezes vaza na célula
+    const descricao = (row[iDesc] ?? '').toString().replace(/\s*p[áa]gina 2\/2 picking list.*$/i, '').trim()
+    const sku = (row[iSku] ?? '').toString().replace(/\./g, '').trim() // "58.633" -> "58633"
+    const qtd = parseInt((row[iQtd] ?? '').toString().replace(/[^\d-]/g, ''), 10) || 0
+    out.push({ unidade, sku, descricao, qtd, tipo: classificaSacolaItem(descricao) })
+  }
+  return out
+}
+
+export function parseSacolasFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' })
+        const rows = []
+        for (const name of workbook.SheetNames) {
+          const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '' })
+          rows.push(...processSacolasSheet(jsonData))
+        }
+        if (rows.length === 0) {
+          reject(new Error('Não encontrei as colunas esperadas. Use: Unidade, SKU, Descrição, Qtd — ou Canal de distribuição, Código Produto, Produto, Qtde.'))
+          return
+        }
+        resolve(rows)
+      } catch (error) {
+        reject(new Error('Erro ao processar planilha: ' + error.message))
+      }
+    }
+    reader.onerror = () => reject(new Error('Erro ao ler o arquivo'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+// Agrega por unidade e calcula as sacolas necessárias:
+//   necessárias = floor(itens regulares / 3) + itens especiais (1 cada). Suporte fica de fora.
+export function analisaSacolas(rows) {
+  const byU = {}
+  for (const it of rows) {
+    if (!byU[it.unidade]) byU[it.unidade] = { unidade: it.unidade, regular: 0, especial: 0, suporte: 0 }
+    byU[it.unidade][it.tipo] += it.qtd
+  }
+  return Object.values(byU)
+    .map(u => ({ ...u, necessarias: Math.floor(u.regular / 3) + u.especial }))
+    .sort((a, b) => a.unidade.localeCompare(b.unidade))
+}

@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart, AlertOctagon } from 'lucide-react'
+import { Sparkles, RotateCcw, FileSpreadsheet, Table, ArrowLeftRight, BarChart2, Layers, PackageX, ShoppingCart, AlertOctagon, ShoppingBag } from 'lucide-react'
 import SummaryCards from './SummaryCards'
 import DataTable from './DataTable'
 import TransferSuggestions from './TransferSuggestions'
 import ClassCoverage from './ClassCoverage'
 import EstoqueParado from './EstoqueParado'
 import Ruptura from './Ruptura'
+import Sacolas from './Sacolas'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
 
@@ -387,6 +388,18 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('sacolas')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeTab === 'sacolas'
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'}
+              `}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Sacolas
+            </button>
           </div>
         </section>
 
@@ -406,6 +419,9 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
           )}
           {activeTab === 'ruptura' && (
             <Ruptura items={items} targetCoverage={targetCoverage} editedQty={editedQty} onEditQty={handleEditQty} />
+          )}
+          {activeTab === 'sacolas' && (
+            <Sacolas />
           )}
         </section>
       </main>
