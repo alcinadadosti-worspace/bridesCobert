@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Sparkles, TrendingUp, ShieldCheck, Zap } from 'lucide-react'
+import { Sparkles, TrendingUp, ShieldCheck, Zap, ShoppingBag } from 'lucide-react'
 import FileUpload from './FileUpload'
 import CoverageSlider from './CoverageSlider'
 
@@ -21,7 +21,7 @@ const features = [
   },
 ]
 
-function Hero({ onDataLoaded, targetCoverage, setTargetCoverage, leadTime, setLeadTime }) {
+function Hero({ onDataLoaded, targetCoverage, setTargetCoverage, leadTime, setLeadTime, onGoToSacolas }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -103,6 +103,21 @@ function Hero({ onDataLoaded, targetCoverage, setTargetCoverage, leadTime, setLe
             leadTime={leadTime}
             onLeadTimeChange={setLeadTime}
           />
+
+          {/* Outra análise: conferência de sacolas (não precisa da planilha de estoque) */}
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <span className="text-xs text-gray-500">ou faça outra análise, sem depender do estoque</span>
+            <button
+              onClick={onGoToSacolas}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                bg-white/5 border border-white/10
+                text-sm font-medium text-gray-300
+                hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <ShoppingBag className="w-4 h-4 text-cyan-400" />
+              Conferir sacolas (planilha de vendas)
+            </button>
+          </div>
         </div>
       </main>
 
