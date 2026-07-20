@@ -37,10 +37,7 @@ function Hero({ onDataLoaded, onGoToSacolas }) {
         <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
           {/* Esquerda — o que a ferramenta faz */}
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-4">
-              Do estoque ao pedido de compra.
-            </h1>
-            <p className="text-base text-gray-400 max-w-md mb-8">
+            <p className="text-lg text-gray-300 max-w-md mb-8">
               Suba a consulta de estoque e veja, por loja e por classe: cobertura, o que comprar,
               transferências entre lojas, itens em ruptura e estoque parado — tudo no navegador.
             </p>
