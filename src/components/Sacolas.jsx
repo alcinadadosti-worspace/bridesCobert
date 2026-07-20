@@ -1,10 +1,125 @@
 import { useRef, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { ShoppingBag, Upload, AlertCircle, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react'
+import { ShoppingBag, Upload, AlertCircle, CheckCircle2, AlertTriangle, RotateCcw, Store, Package } from 'lucide-react'
 import { useFileDrop } from '../hooks/useFileDrop'
 import { parseSacolasFile, analisaSacolas } from '../utils/parseSpreadsheet'
 
 const SIZES = [['pp', 'PP'], ['p', 'P'], ['m', 'M'], ['g', 'G']]
+
+// status a partir de (usadas x necessárias)
+function statusDe(usadas, necessarias) {
+  const dif = usadas - necessarias
+  if (usadas === necessarias) return { key: 'ok', dif, label: 'Regra OK', text: 'text-emerald-400', bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 border-emerald-500/30', ring: 'ring-emerald-500/25', Icon: CheckCircle2 }
+  if (usadas < necessarias) return { key: 'faltou', dif, label: `Faltou ${Math.abs(dif).toLocaleString('pt-BR')}`, text: 'text-red-400', bar: 'bg-red-500', badge: 'bg-red-500/15 border-red-500/30', ring: 'ring-red-500/25', Icon: AlertTriangle }
+  return { key: 'excesso', dif, label: `Excesso +${dif.toLocaleString('pt-BR')}`, text: 'text-amber-400', bar: 'bg-amber-500', badge: 'bg-amber-500/15 border-amber-500/30', ring: 'ring-amber-500/25', Icon: AlertTriangle }
+}
+
+function SummaryTile({ label, value, icon: Icon, tone }) {
+  const map = {
+    cyan: ['text-cyan-400', 'bg-cyan-500/15'],
+    violet: ['text-violet-300', 'bg-violet-500/15'],
+  }
+  const [tc, bc] = map[tone] || ['text-gray-300', 'bg-white/10']
+  return (
+    <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${bc}`}>
+        <Icon className={`w-5 h-5 ${tc}`} />
+      </div>
+      <div className="min-w-0">
+        <span className={`text-2xl font-bold ${tc}`}>{value.toLocaleString('pt-BR')}</span>
+        <p className="text-xs text-gray-400">{label}</p>
+      </div>
+    </div>
+  )
+}
+
+function StatusTile({ usadas, necessarias }) {
+  const s = statusDe(usadas, necessarias)
+  return (
+    <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${s.badge} border`}>
+        <s.Icon className={`w-5 h-5 ${s.text}`} />
+      </div>
+      <div className="min-w-0">
+        <span className={`text-lg font-bold ${s.text}`}>{s.key === 'ok' ? 'Tudo certo' : s.label}</span>
+        <p className="text-xs text-gray-400">Status geral (usadas × necessárias)</p>
+      </div>
+    </div>
+  )
+}
+
+function StoreCard({ u, valores, onSet, usadas }) {
+  const s = statusDe(usadas, u.necessarias)
+  const max = Math.max(u.necessarias, usadas, 1)
+  const fillPct = Math.round((usadas / max) * 100)
+  const markPct = Math.round((u.necessarias / max) * 100)
+  const regSac = Math.floor(u.regular / 3)
+
+  return (
+    <div className={`glass rounded-2xl p-5 ring-1 ${s.ring}`}>
+      {/* header */}
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Store className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span className="text-white font-semibold truncate">{u.unidade}</span>
+        </div>
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${s.badge} ${s.text}`}>
+          <s.Icon className="w-3.5 h-3.5" /> {s.label}
+        </span>
+      </div>
+
+      {/* números + barra */}
+      <div className="flex items-end justify-between mb-2">
+        <div>
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide">Usadas / Necessárias</p>
+          <p className="text-2xl font-bold text-white">
+            {usadas.toLocaleString('pt-BR')}
+            <span className="text-gray-500 text-lg font-medium"> / {u.necessarias.toLocaleString('pt-BR')}</span>
+          </p>
+        </div>
+      </div>
+      <div className="relative h-2.5 bg-white/10 rounded-full overflow-visible mb-1">
+        <div className={`h-full rounded-full transition-all duration-500 ${s.bar}`} style={{ width: `${Math.min(fillPct, 100)}%` }} />
+        <div className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white/60 rounded-full" style={{ left: `${markPct}%` }} title="Necessárias (meta)" />
+      </div>
+      <p className="text-[11px] text-gray-600 mb-4">Barra = usadas · marca branca = necessárias</p>
+
+      {/* detalhamento */}
+      <div className="flex flex-wrap gap-2 mb-4 text-xs">
+        <span className="px-2 py-1 rounded-lg bg-white/5 text-gray-300">
+          Regulares <b className="text-white">{u.regular.toLocaleString('pt-BR')}</b> ÷3 → <b className="text-white">{regSac.toLocaleString('pt-BR')}</b>
+        </span>
+        <span className="px-2 py-1 rounded-lg bg-white/5 text-gray-300">
+          Especiais <b className="text-white">{u.especial.toLocaleString('pt-BR')}</b> ×1
+        </span>
+        {u.suporte > 0 && (
+          <span className="px-2 py-1 rounded-lg bg-white/5 text-gray-500">
+            Suporte {u.suporte.toLocaleString('pt-BR')} (fora)
+          </span>
+        )}
+      </div>
+
+      {/* inputs */}
+      <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">Sacolas usadas por tamanho</p>
+      <div className="grid grid-cols-4 gap-2">
+        {SIZES.map(([k, label]) => (
+          <div key={k}>
+            <label className="block text-[10px] text-gray-500 mb-1 text-center">{label}</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={valores?.[k] ?? ''}
+              onChange={(e) => onSet(k, e.target.value)}
+              placeholder="0"
+              className="w-full px-2 py-1.5 text-center text-white bg-[#1a1a2e] border border-white/10 rounded-lg
+                focus:outline-none focus:ring-1 focus:ring-primary-500/50"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function Sacolas() {
   const fileRef = useRef(null)
@@ -79,110 +194,47 @@ function Sacolas() {
 
   // ---- Resultado ----
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2">
-          <ShoppingBag className="w-5 h-5 text-cyan-400" />
-          <h3 className="text-lg font-semibold text-white">Conferência de Sacolas</h3>
+    <div className="space-y-6">
+      {/* Resumo */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShoppingBag className="w-5 h-5 text-cyan-400 shrink-0" />
+            <h3 className="text-lg font-semibold text-white">Conferência de Sacolas</h3>
+            <span className="text-xs text-gray-500 ml-1 truncate max-w-[220px]" title={fileName}>{fileName}</span>
+          </div>
+          <button
+            onClick={reset}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" /> Trocar planilha
+          </button>
         </div>
-        <button
-          onClick={reset}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 transition-colors"
-        >
-          <RotateCcw className="w-4 h-4" /> Trocar planilha
-        </button>
-      </div>
-      <p className="text-xs text-gray-500 mb-5">
-        {fileName} — informe quantas sacolas de cada tamanho (PP/P/M/G) foram usadas por loja; o app compara com o necessário pela regra.
-      </p>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse text-sm">
-          <thead>
-            <tr className="text-gray-400 text-xs uppercase">
-              <th className="px-3 py-2 text-left">Unidade</th>
-              <th className="px-3 py-2 text-right">Itens (÷3)</th>
-              <th className="px-3 py-2 text-right">Especiais</th>
-              <th className="px-3 py-2 text-right">Suporte</th>
-              <th className="px-3 py-2 text-right">Necessárias</th>
-              <th className="px-2 py-2 text-center">PP</th>
-              <th className="px-2 py-2 text-center">P</th>
-              <th className="px-2 py-2 text-center">M</th>
-              <th className="px-2 py-2 text-center">G</th>
-              <th className="px-3 py-2 text-right">Usadas</th>
-              <th className="px-3 py-2 text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {analise.map((u) => {
-              const usd = usadas(u.unidade)
-              const dif = usd - u.necessarias
-              const status = usd === u.necessarias ? 'ok' : usd < u.necessarias ? 'faltou' : 'excesso'
-              return (
-                <tr key={u.unidade} className="border-t border-white/5">
-                  <td className="px-3 py-2 text-cyan-400 font-medium whitespace-nowrap">{u.unidade}</td>
-                  <td className="px-3 py-2 text-right text-gray-300">
-                    {u.regular.toLocaleString('pt-BR')} <span className="text-gray-600">→ {Math.floor(u.regular / 3)}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right text-gray-300">{u.especial.toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-2 text-right text-gray-600">{u.suporte.toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-2 text-right font-bold text-white">{u.necessarias.toLocaleString('pt-BR')}</td>
-                  {SIZES.map(([k]) => (
-                    <td key={k} className="px-1 py-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={bags[u.unidade]?.[k] ?? ''}
-                        onChange={(e) => setBag(u.unidade, k, e.target.value)}
-                        placeholder="0"
-                        className="w-12 px-1 py-1 text-center text-white bg-[#1a1a2e] border border-white/10 rounded
-                          focus:outline-none focus:ring-1 focus:ring-primary-500/50"
-                      />
-                    </td>
-                  ))}
-                  <td className="px-3 py-2 text-right font-semibold text-white">{usd.toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-2 text-center whitespace-nowrap">
-                    {status === 'ok' ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-400">
-                        <CheckCircle2 className="w-4 h-4" /> OK
-                      </span>
-                    ) : (
-                      <span className={`inline-flex items-center gap-1 ${status === 'faltou' ? 'text-red-400' : 'text-amber-400'}`}>
-                        <AlertTriangle className="w-4 h-4" /> {status === 'faltou' ? 'Faltou' : 'Excesso'} {dif > 0 ? '+' : ''}{dif}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-white/10 font-semibold">
-              <td className="px-3 py-2 text-gray-300">Total</td>
-              <td colSpan={3}></td>
-              <td className="px-3 py-2 text-right text-white">{totalNec.toLocaleString('pt-BR')}</td>
-              <td colSpan={4}></td>
-              <td className="px-3 py-2 text-right text-white">{totalUsadas.toLocaleString('pt-BR')}</td>
-              <td className="px-3 py-2 text-center whitespace-nowrap">
-                {totalUsadas === totalNec ? (
-                  <span className="text-emerald-400">OK</span>
-                ) : (
-                  <span className={totalUsadas < totalNec ? 'text-red-400' : 'text-amber-400'}>
-                    {totalUsadas < totalNec ? 'Faltou' : 'Excesso'} {totalUsadas - totalNec > 0 ? '+' : ''}{totalUsadas - totalNec}
-                  </span>
-                )}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SummaryTile label="Sacolas necessárias" value={totalNec} icon={ShoppingBag} tone="cyan" />
+          <SummaryTile label="Sacolas usadas (informadas)" value={totalUsadas} icon={Package} tone="violet" />
+          <StatusTile usadas={totalUsadas} necessarias={totalNec} />
+        </div>
 
-      <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-white/5">
-        <span className="text-xs text-gray-600">
-          Itens (÷3) = produtos regulares (floor da qtd ÷ 3) · Especiais = Kit/Combo/Estojo (1 sacola cada) · Suporte à venda fica fora do cálculo
-        </span>
+        <p className="text-xs text-gray-500 mt-4">
+          Regra: a cada 3 itens = 1 sacola · Kit/Combo/Estojo = 1 por item · suporte à venda fica fora. Informe as sacolas usadas por loja nos cards abaixo.
+        </p>
+      </motion.div>
+
+      {/* Cards por loja */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {analise.map((u) => (
+          <StoreCard
+            key={u.unidade}
+            u={u}
+            valores={bags[u.unidade]}
+            usadas={usadas(u.unidade)}
+            onSet={(size, val) => setBag(u.unidade, size, val)}
+          />
+        ))}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
