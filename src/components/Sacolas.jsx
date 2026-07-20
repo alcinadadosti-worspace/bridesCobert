@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { ShoppingBag, Upload, AlertCircle, CheckCircle2, AlertTriangle, RotateCcw, Store, Package } from 'lucide-react'
+import { ShoppingBag, Upload, AlertCircle, CheckCircle2, AlertTriangle, RotateCcw, Store, Package, BarChart3 } from 'lucide-react'
 import { useFileDrop } from '../hooks/useFileDrop'
 import { parseSacolasFile, analisaSacolas } from '../utils/parseSpreadsheet'
 
@@ -121,6 +121,82 @@ function StoreCard({ u, valores, onSet, usadas }) {
   )
 }
 
+// Cores validadas (validate_palette.js, modo dark): pares CVD-seguros na faixa de luminosidade
+const COR = { necessarias: '#0ea5b7', usadas: '#8b5cf6', regulares: '#3b82f6', especiais: '#ec4899' }
+
+function LegItem({ cor, label }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+      <span className="w-3 h-3 rounded-sm" style={{ background: cor }} /> {label}
+    </span>
+  )
+}
+
+// Gráfico: barras agrupadas comparando Necessárias x Usadas por loja
+function GraficoNecUsadas({ analise, usadasFn }) {
+  const max = Math.max(1, ...analise.map((u) => Math.max(u.necessarias, usadasFn(u.unidade))))
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <LegItem cor={COR.necessarias} label="Necessárias" />
+        <LegItem cor={COR.usadas} label="Usadas" />
+      </div>
+      <div className="space-y-4">
+        {analise.map((u) => {
+          const usd = usadasFn(u.unidade)
+          return (
+            <div key={u.unidade}>
+              <div className="text-xs text-gray-300 mb-1 truncate">{u.unidade}</div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(u.necessarias / max) * 100}%`, background: COR.necessarias }} title={`Necessárias: ${u.necessarias.toLocaleString('pt-BR')}`} />
+                </div>
+                <span className="w-16 text-right text-xs text-gray-400 tabular-nums">{u.necessarias.toLocaleString('pt-BR')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(usd / max) * 100}%`, background: COR.usadas }} title={`Usadas: ${usd.toLocaleString('pt-BR')}`} />
+                </div>
+                <span className="w-16 text-right text-xs text-gray-400 tabular-nums">{usd.toLocaleString('pt-BR')}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Gráfico: composição das sacolas necessárias (Regulares ÷3 + Especiais), empilhado por loja
+function GraficoComposicao({ analise }) {
+  const max = Math.max(1, ...analise.map((u) => u.necessarias))
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <LegItem cor={COR.regulares} label="Regulares (÷3)" />
+        <LegItem cor={COR.especiais} label="Especiais (×1)" />
+      </div>
+      <div className="space-y-4">
+        {analise.map((u) => {
+          const reg = Math.floor(u.regular / 3)
+          return (
+            <div key={u.unidade}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-gray-300 truncate">{u.unidade}</span>
+                <span className="text-gray-400 tabular-nums">{u.necessarias.toLocaleString('pt-BR')}</span>
+              </div>
+              <div className="flex h-3 rounded-full overflow-hidden bg-white/5">
+                <div className="h-full transition-all duration-500" style={{ width: `${(reg / max) * 100}%`, background: COR.regulares }} title={`Regulares: ${reg.toLocaleString('pt-BR')}`} />
+                <div className="h-full transition-all duration-500" style={{ width: `${(u.especial / max) * 100}%`, background: COR.especiais, marginLeft: reg > 0 && u.especial > 0 ? '2px' : 0 }} title={`Especiais: ${u.especial.toLocaleString('pt-BR')}`} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function Sacolas() {
   const fileRef = useRef(null)
   const [rows, setRows] = useState(null)
@@ -220,6 +296,24 @@ function Sacolas() {
         <p className="text-xs text-gray-500 mt-4">
           Regra: a cada 3 itens = 1 sacola · Kit/Combo/Estojo = 1 por item · suporte à venda fica fora. Informe as sacolas usadas por loja nos cards abaixo.
         </p>
+      </motion.div>
+
+      {/* Gráficos */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <BarChart3 className="w-5 h-5 text-cyan-400" />
+          <h4 className="text-base font-semibold text-white">Visão geral</h4>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
+          <div>
+            <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-3">Necessárias × Usadas por loja</p>
+            <GraficoNecUsadas analise={analise} usadasFn={usadas} />
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-3">De onde vêm as sacolas necessárias</p>
+            <GraficoComposicao analise={analise} />
+          </div>
+        </div>
       </motion.div>
 
       {/* Cards por loja */}
