@@ -1,14 +1,14 @@
 import { STORE_NAMES, normalizeString } from './parseSpreadsheet'
 
 // ==================== HISTÓRICO DE SACOLAS ====================
-// Um registro por mês × loja, alimentado por planilha:
-//   necessarias = regra da conferência (planilha de itens)
-//   usadas      = sacolas institucionais que saíram nos pedidos, por tamanho (planilha de itens)
-//   estoque     = sacolas em estoque + trânsito, por tamanho (consulta de estoque)
-// Meta do mês seguinte (total da loja, segue a regra):
-//   média das necessárias nos últimos 3 meses × (1 + margem) [− estoque do mês, se enviado], nunca negativa
+// Saldo de sacolas por loja, mês a mês:
+//   usadas  = sacolas pela regra da conferência (planilha de itens do mês)
+//   compradas = digitado pelo usuário
+//   início  = sobra do mês anterior (no primeiro mês da loja, o estoque inicial digitado)
+//   sobra   = início + compradas − usadas (se der negativo, faltaram sacolas; o mês
+//             seguinte começa com 0)
+// Meta do mês seguinte: média das usadas nos últimos 3 meses × (1 + margem) − sobra
 
-export const TAMANHOS = [['pp', 'PP'], ['p', 'P'], ['m', 'M'], ['g', 'G']]
 export const JANELA_MESES = 3
 
 // ---- meses no formato 'AAAA-MM' ----
@@ -39,7 +39,6 @@ export function idRegistro(mes, loja) {
 
 const chave = (mes, loja) => `${mes}|${loja}`
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
-export const somaTamanhos = (obj) => (obj ? TAMANHOS.reduce((a, [k]) => a + (num(obj[k]) || 0), 0) : null)
 
 export function indexa(registros) {
   const map = new Map()
@@ -49,49 +48,57 @@ export function indexa(registros) {
 
 export const registroDe = (idx, mes, loja) => idx.get(chave(mes, loja)) || null
 
-// Agrupa a análise da conferência por loja canônica (soma se dois nomes caírem na mesma loja)
+// Soma as necessárias da conferência por loja canônica (dois nomes podem cair na mesma loja)
 export function agrupaAnalise(analise) {
   const out = new Map()
   for (const u of analise) {
     const loja = canonLoja(u.unidade)
-    const atual = out.get(loja) || { loja, necessarias: 0, usadas: null }
-    atual.necessarias += u.necessarias
-    if (u.usadas) {
-      atual.usadas = atual.usadas || { pp: 0, p: 0, m: 0, g: 0 }
-      for (const [k] of TAMANHOS) atual.usadas[k] += u.usadas[k] || 0
-    }
-    out.set(loja, atual)
+    out.set(loja, (out.get(loja) || 0) + u.necessarias)
   }
-  return [...out.values()]
+  return [...out].map(([loja, necessarias]) => ({ loja, necessarias }))
 }
 
-// Meta para o mês seguinte a `mes` (total, sem separar tamanho — a regra vale para qualquer
-// sacola): média das necessárias pela regra nos últimos 3 meses × (1 + margem). O estoque é
-// opcional: com a consulta de estoque, desconta o total de sacolas que a loja já tem.
-// meta null quando não há planilha de itens nos últimos 3 meses.
+// Saldo de uma loja num mês. inicioHerdado = veio da sobra do mês anterior.
+// sobra null quando falta a planilha do mês (ou de um mês anterior da sequência).
+export function saldoMes(idx, mes, loja) {
+  const reg = registroDe(idx, mes, loja)
+  const ant = registroDe(idx, somaMes(mes, -1), loja)
+  let inicio
+  if (ant) {
+    const s = saldoMes(idx, somaMes(mes, -1), loja).sobra
+    inicio = s === null ? null : Math.max(0, s)
+  } else {
+    inicio = num(reg?.inicial) || 0
+  }
+  const compradas = num(reg?.compradas) || 0
+  const usadas = num(reg?.necessarias)
+  const sobra = inicio === null || usadas === null ? null : inicio + compradas - usadas
+  return { existe: !!reg, inicioHerdado: !!ant, inicio, compradas, usadas, sobra }
+}
+
+// Meta para o mês seguinte a `mes`: média das usadas pela regra nos últimos 3 meses + margem,
+// menos a sobra do mês. motivo: 'sem-itens' (nenhuma planilha nos últimos 3 meses) |
+// 'sem-sobra' (falta a planilha do mês para saber a sobra)
 export function metaProximoMes(idx, mes, loja, margemPct) {
   const comRegra = Array.from({ length: JANELA_MESES }, (_, i) => registroDe(idx, somaMes(mes, -i), loja)).filter((r) => num(r?.necessarias) !== null)
-  const estoqueReg = registroDe(idx, mes, loja)?.estoque || null
-  const base = { meses: comRegra.length, comEstoque: !!estoqueReg }
-  if (comRegra.length === 0) return { ...base, meta: null }
+  if (comRegra.length === 0) return { meses: 0, meta: null, motivo: 'sem-itens' }
   const media = comRegra.reduce((a, r) => a + r.necessarias, 0) / comRegra.length
   // toFixed tira o ruído de ponto flutuante (200 × 1,1 = 220,00000000000003 → 220, não 221)
   const alvo = Math.ceil(+(media * (1 + (margemPct || 0) / 100)).toFixed(6))
-  const estoque = estoqueReg ? somaTamanhos(estoqueReg) : 0
-  return { ...base, media, alvo, estoque, meta: Math.max(0, alvo - estoque) }
+  const { sobra } = saldoMes(idx, mes, loja)
+  const base = { meses: comRegra.length, media, alvo }
+  if (sobra === null) return { ...base, sobra: null, meta: null, motivo: 'sem-sobra' }
+  const disponivel = Math.max(0, sobra)
+  return { ...base, sobra: disponivel, meta: Math.max(0, alvo - disponivel), motivo: null }
 }
 
 // Totais de um mês somando lojas (tabela mês a mês); null onde nenhuma loja tem o dado
 export function totaisDoMes(idx, mes, lojas) {
-  const soma = (vals) => (vals.some((v) => v !== null) ? vals.reduce((a, v) => a + (v || 0), 0) : null)
-  const regs = lojas.map((l) => registroDe(idx, mes, l)).filter(Boolean)
-  if (regs.length === 0) return null
-  // usadas − regra só nas lojas que têm os dois (presencial não traz sacolas usadas)
-  const ambos = regs.filter((r) => r.usadas && num(r.necessarias) !== null)
-  return {
-    necessarias: soma(regs.map((r) => num(r.necessarias))),
-    usadas: soma(regs.map((r) => somaTamanhos(r.usadas))),
-    estoque: soma(regs.map((r) => somaTamanhos(r.estoque))),
-    difRegra: ambos.length ? ambos.reduce((a, r) => a + somaTamanhos(r.usadas) - r.necessarias, 0) : null,
+  const saldos = lojas.map((l) => saldoMes(idx, mes, l)).filter((s) => s.existe)
+  if (saldos.length === 0) return null
+  const soma = (campo) => {
+    const vals = saldos.map((s) => s[campo]).filter((v) => v !== null)
+    return vals.length ? vals.reduce((a, v) => a + v, 0) : null
   }
+  return { inicio: soma('inicio'), compradas: soma('compradas'), usadas: soma('usadas'), sobra: soma('sobra') }
 }

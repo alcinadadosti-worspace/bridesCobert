@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { History, ChevronLeft, ChevronRight, LogOut, Store, ShoppingCart, Trash2, AlertCircle, CheckCircle2, ClipboardCheck, Lock, FileSpreadsheet } from 'lucide-react'
 import { observarUsuario, usuarioDe, entrar, sair, observarRegistros, salvarRegistros, excluirRegistro, removerDoMes } from '../lib/sacolasCloud'
-import { parseSacolasFile, analisaSacolas, parseEstoqueSacolasFile } from '../utils/parseSpreadsheet'
+import { parseSacolasFile, analisaSacolas } from '../utils/parseSpreadsheet'
 import { useFileDrop } from '../hooks/useFileDrop'
 import {
-  TAMANHOS, JANELA_MESES, mesAtual, somaMes, nomeMes, idRegistro,
-  indexa, registroDe, agrupaAnalise, metaProximoMes, totaisDoMes, somaTamanhos,
+  JANELA_MESES, mesAtual, somaMes, nomeMes, idRegistro,
+  indexa, registroDe, agrupaAnalise, saldoMes, metaProximoMes, totaisDoMes,
 } from '../utils/sacolasHistorico'
 
 const chave = (mes, loja) => `${mes}|${loja}`
@@ -50,8 +50,8 @@ function TelaLogin({ onEntrar, erro, entrando }) {
         <h3 className="text-lg font-semibold text-white">Histórico de sacolas</h3>
       </div>
       <p className="text-sm text-gray-400 mb-5">
-        A planilha de itens de cada mês fica salva na nuvem. Com ela o app guarda a regra e as sacolas
-        usadas por loja, e calcula de quantas sacolas cada loja vai precisar no mês seguinte.
+        Saldo de sacolas por loja, mês a mês: a planilha de itens diz quantas foram usadas pela regra,
+        você lança as compradas, e o app calcula a sobra e quantas comprar no mês seguinte.
       </p>
       <form onSubmit={enviar} className="space-y-3">
         <label className="block">
@@ -98,7 +98,7 @@ function TelaSemAcesso({ usuario, onSair }) {
   )
 }
 
-// ---------- envio das planilhas do mês ----------
+// ---------- envio da planilha do mês ----------
 function EnvioPlanilha({ titulo, ajuda, arquivo, onArquivo, onRemover, ocupado }) {
   const ref = useRef(null)
   const { isDragging, error, clearError, handlers, handleFileInput } = useFileDrop(onArquivo)
@@ -152,24 +152,53 @@ function EnvioPlanilha({ titulo, ajuda, arquivo, onArquivo, onRemover, ocupado }
   )
 }
 
-// ---------- meta do mês seguinte ----------
-function TabelaMeta({ lojas, idx, mes, margem, setMargem, temEstoque }) {
+// ---------- campo numérico que salva ao sair (Tab, Enter ou clique fora) ----------
+function CampoNumero({ valor, onSalvar, label }) {
+  const [texto, setTexto] = useState(valor == null ? '' : String(valor))
+  const focado = useRef(false)
+  useEffect(() => { if (!focado.current) setTexto(valor == null ? '' : String(valor)) }, [valor])
+  const salvar = () => {
+    focado.current = false
+    const n = texto === '' ? null : parseInt(texto, 10)
+    if (n !== (valor ?? null)) onSalvar(n)
+  }
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      aria-label={label}
+      value={texto}
+      placeholder="0"
+      onFocus={() => { focado.current = true }}
+      onChange={(e) => setTexto(limpa(e.target.value))}
+      onBlur={salvar}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      className="w-28 px-2.5 py-1.5 text-right text-sm text-white bg-[#0f1a14] border border-white/10 rounded-lg
+        placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
+    />
+  )
+}
+
+// ---------- quanto comprar no mês seguinte ----------
+function TabelaMeta({ lojas, idx, mes, margem, setMargem }) {
   const prox = nomeMes(somaMes(mes, 1))
-  const linhas = lojas.map((loja) => ({ loja, m: metaProximoMes(idx, mes, loja, margem) }))
+  const linhas = lojas.map((loja) => ({ loja, m: metaProximoMes(idx, mes, loja, margem), s: saldoMes(idx, mes, loja) }))
   const soma = (campo) => {
     const vals = linhas.map((l) => l.m[campo]).filter((v) => v !== null && v !== undefined)
     return vals.length ? vals.reduce((a, v) => a + v, 0) : null
   }
   const inteiro = (v) => (v === null || v === undefined ? '—' : Math.round(v).toLocaleString('pt-BR'))
-  const dica = (m) => `Média de ${m.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} sacolas/mês pela regra (${m.meses} ${m.meses === 1 ? 'mês' : 'meses'}) + ${margem}% = ${fmt(m.alvo)}`
-    + (m.comEstoque ? ` − estoque ${fmt(m.estoque)}` : '')
+  const motivo = (l) => (l.m.motivo === 'sem-itens'
+    ? `sem planilha de itens nos últimos ${JANELA_MESES} meses`
+    : l.s.usadas === null ? `suba a planilha de ${nomeMes(mes)} para saber a sobra` : 'falta a planilha de um mês anterior')
+  const dica = (m) => `Média de ${m.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} sacolas/mês pela regra (${m.meses} ${m.meses === 1 ? 'mês' : 'meses'}) + ${margem}% = ${fmt(m.alvo)} − sobra ${fmt(m.sobra)}`
 
   return (
     <div className="glass rounded-2xl p-6 ring-1 ring-gold-500/20">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-1">
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-5 h-5 text-gold-400" />
-          <h4 className="text-base font-semibold text-white">{temEstoque ? `Comprar para ${prox}` : `Sacolas para ${prox}`}</h4>
+          <h4 className="text-base font-semibold text-white">Comprar para {prox}</h4>
         </div>
         <label className="flex items-center gap-2 text-xs text-gray-400">
           Margem de segurança
@@ -184,36 +213,34 @@ function TabelaMeta({ lojas, idx, mes, margem, setMargem, temEstoque }) {
         </label>
       </div>
       <p className="text-xs text-gray-500 mb-5">
-        Pela regra da conferência (3 itens = 1 sacola · kit/combo/estojo = 1 · suporte à venda não conta), qualquer tamanho:
-        média dos últimos {JANELA_MESES} meses + margem{temEstoque ? `, menos o estoque de sacolas de ${nomeMes(mes)}` : ''}.
+        Necessárias = média das usadas pela regra nos últimos {JANELA_MESES} meses + margem. Comprar = necessárias − sobra do fim de {nomeMes(mes)}.
       </p>
 
       {linhas.length === 0 ? (
-        <p className="text-sm text-gray-400">Suba a planilha de itens de um mês para começar.</p>
+        <p className="text-sm text-gray-400">Sem dados em {nomeMes(mes)}. Suba a planilha de itens do mês.</p>
       ) : (
         <div className="overflow-x-auto -mx-1 px-1">
-          <table className="w-full text-sm min-w-[360px]">
+          <table className="w-full text-sm min-w-[380px]">
             <thead>
               <tr className="text-[11px] text-gray-500 uppercase tracking-wide">
                 <th className="text-left font-medium pb-2">Loja</th>
-                <th className="text-right font-medium pb-2" title={`Média das necessárias pela regra nos últimos ${JANELA_MESES} meses`}>Média/mês</th>
-                <th className="text-right font-medium pb-2">+ {margem}%</th>
-                {temEstoque && <th className="text-right font-medium pb-2">− Estoque</th>}
-                <th className="text-right font-medium pb-2">{temEstoque ? 'Comprar' : 'Sacolas'}</th>
+                <th className="text-right font-medium pb-2" title={`Média das usadas pela regra nos últimos ${JANELA_MESES} meses`}>Média/mês</th>
+                <th className="text-right font-medium pb-2">Necessárias (+{margem}%)</th>
+                <th className="text-right font-medium pb-2">− Sobra</th>
+                <th className="text-right font-medium pb-2">Comprar</th>
               </tr>
             </thead>
             <tbody>
-              {linhas.map(({ loja, m }) => (
-                <tr key={loja} className="border-t border-white/5" title={m.meta === null ? undefined : dica(m)}>
+              {linhas.map((l) => (
+                <tr key={l.loja} className="border-t border-white/5" title={l.m.meta === null ? undefined : dica(l.m)}>
                   <td className="py-2 text-gray-300 max-w-[220px]">
-                    <div className="truncate">{loja}</div>
-                    {m.meta === null && <div className="text-[11px] text-amber-400/90">sem planilha de itens nos últimos {JANELA_MESES} meses</div>}
-                    {m.meta !== null && temEstoque && !m.comEstoque && <div className="text-[11px] text-gray-500">não está na consulta de estoque</div>}
+                    <div className="truncate">{l.loja}</div>
+                    {l.m.meta === null && <div className="text-[11px] text-amber-400/90">{motivo(l)}</div>}
                   </td>
-                  <td className="py-2 text-right tabular-nums text-gray-300">{inteiro(m.media)}</td>
-                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(m.alvo)}</td>
-                  {temEstoque && <td className="py-2 text-right tabular-nums text-gray-300">{m.comEstoque ? fmt(m.estoque) : '—'}</td>}
-                  <td className="py-2 text-right tabular-nums font-semibold text-gold-300">{fmt(m.meta)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{inteiro(l.m.media)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-200">{fmt(l.m.alvo)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(l.m.sobra)}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-gold-300">{fmt(l.m.meta)}</td>
                 </tr>
               ))}
             </tbody>
@@ -223,7 +250,7 @@ function TabelaMeta({ lojas, idx, mes, margem, setMargem, temEstoque }) {
                   <td className="pt-2 text-gray-400 text-xs uppercase tracking-wide">Total</td>
                   <td className="pt-2 text-right tabular-nums text-gray-200">{inteiro(soma('media'))}</td>
                   <td className="pt-2 text-right tabular-nums text-gray-200">{fmt(soma('alvo'))}</td>
-                  {temEstoque && <td className="pt-2 text-right tabular-nums text-gray-200">{fmt(soma('estoque'))}</td>}
+                  <td className="pt-2 text-right tabular-nums text-gray-200">{fmt(soma('sobra'))}</td>
                   <td className="pt-2 text-right tabular-nums font-bold text-gold-300">{fmt(soma('meta'))}</td>
                 </tr>
               </tfoot>
@@ -235,16 +262,14 @@ function TabelaMeta({ lojas, idx, mes, margem, setMargem, temEstoque }) {
   )
 }
 
-// ---------- dados do mês por loja ----------
-function CartaoLoja({ loja, mes, reg, onExcluir }) {
-  const usadasTotal = somaTamanhos(reg?.usadas)
-  const nec = reg?.necessarias ?? null
-  const dif = usadasTotal !== null && nec !== null ? usadasTotal - nec : null
-  const porTamanho = (obj) => TAMANHOS.map(([k, l]) => `${l} ${fmt(obj[k])}`).join(' · ')
+// ---------- saldo do mês por loja ----------
+function CartaoLoja({ loja, mes, s, reg, onSalvar, onExcluir }) {
+  const mesAnt = nomeMes(somaMes(mes, -1))
+  const faltaram = s.sobra !== null && s.sobra < 0 ? -s.sobra : 0
 
   return (
     <div className="glass rounded-2xl p-5">
-      <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           <Store className="w-4 h-4 text-gold-400 shrink-0" />
           <span className="text-white font-semibold truncate">{loja}</span>
@@ -256,35 +281,32 @@ function CartaoLoja({ loja, mes, reg, onExcluir }) {
         )}
       </div>
 
-      {!reg ? (
-        <p className="text-sm text-gray-500">Sem dados em {nomeMes(mes)}.</p>
-      ) : (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-baseline text-sm">
-          <dt className="text-xs text-gray-400">Pela regra</dt>
-          <dd className="text-white font-semibold tabular-nums">{fmt(nec)} <span className="text-xs font-normal text-gray-500">sacolas necessárias</span></dd>
-          <dt className="text-xs text-gray-400">Nos pedidos</dt>
-          <dd className="tabular-nums text-gray-200">
-            {reg.usadas ? (
-              <>
-                {fmt(usadasTotal)} <span className="text-xs text-gray-500">({porTamanho(reg.usadas)})</span>
-                {dif !== null && dif !== 0 && (
-                  <span className={`block text-xs ${dif > 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                    {dif > 0 ? `${fmt(dif)} acima da regra` : `${fmt(-dif)} abaixo da regra`}
-                  </span>
-                )}
-                {dif === 0 && <span className="block text-xs text-emerald-400">bateu com a regra</span>}
-              </>
-            ) : (
-              <span className="text-xs text-gray-600">a planilha não traz as sacolas usadas</span>
-            )}
-          </dd>
-          {reg.estoque && (
-            <>
-              <dt className="text-xs text-gray-400">Estoque</dt>
-              <dd className="tabular-nums text-gray-200">{fmt(somaTamanhos(reg.estoque))} <span className="text-xs text-gray-500">({porTamanho(reg.estoque)})</span></dd>
-            </>
+      <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 items-center text-sm">
+        <dt className="text-gray-400">
+          Estoque no início
+          <span className="block text-[11px] text-gray-600">{s.inicioHerdado ? `sobra de ${mesAnt}` : 'primeiro mês: digite o que a loja tinha'}</span>
+        </dt>
+        <dd className="text-right tabular-nums text-gray-200">
+          {s.inicioHerdado ? fmt(s.inicio) : <CampoNumero label={`Estoque no início ${loja}`} valor={reg?.inicial ?? null} onSalvar={(v) => onSalvar('inicial', v)} />}
+        </dd>
+
+        <dt className="text-gray-400">+ Compradas no mês</dt>
+        <dd className="text-right"><CampoNumero label={`Compradas ${loja}`} valor={reg?.compradas ?? null} onSalvar={(v) => onSalvar('compradas', v)} /></dd>
+
+        <dt className="text-gray-400">− Usadas pela regra</dt>
+        <dd className="text-right tabular-nums text-gray-200">
+          {s.usadas === null ? <span className="text-xs text-gray-600">suba a planilha do mês</span> : fmt(s.usadas)}
+        </dd>
+
+        <dt className="pt-2.5 border-t border-white/10 text-white font-medium">= Sobra no fim</dt>
+        <dd className="pt-2.5 border-t border-white/10 text-right tabular-nums">
+          {s.sobra === null ? <span className="text-gray-600">—</span> : (
+            <span className={faltaram ? 'text-red-400 font-semibold' : 'text-gold-300 font-semibold'}>{fmt(Math.max(0, s.sobra))}</span>
           )}
-        </dl>
+        </dd>
+      </dl>
+      {faltaram > 0 && (
+        <p className="mt-2 text-xs text-red-400">Faltaram {fmt(faltaram)} sacolas para cumprir a regra neste mês.</p>
       )}
     </div>
   )
@@ -295,7 +317,6 @@ function TabelaHistorico({ meses, lojas, idx, mesSel, onSelecionar }) {
   const [filtro, setFiltro] = useState('')
   const lojasFiltro = filtro ? [filtro] : lojas
   const linhas = meses.map((m) => ({ mes: m, t: totaisDoMes(idx, m, lojasFiltro) })).filter((l) => l.t)
-  const temEstoque = linhas.some((l) => l.t.estoque !== null) // estoque é opcional
 
   return (
     <div className="glass rounded-2xl p-6">
@@ -315,17 +336,17 @@ function TabelaHistorico({ meses, lojas, idx, mesSel, onSelecionar }) {
       </div>
 
       {linhas.length === 0 ? (
-        <p className="text-sm text-gray-400">Nenhum mês enviado ainda.</p>
+        <p className="text-sm text-gray-400">Nenhum mês lançado ainda.</p>
       ) : (
         <div className="overflow-x-auto -mx-1 px-1">
           <table className="w-full text-sm min-w-[480px]">
             <thead>
               <tr className="text-[11px] text-gray-500 uppercase tracking-wide">
                 <th className="text-left font-medium pb-2">Mês</th>
-                <th className="text-right font-medium pb-2" title="Sacolas necessárias pela regra da conferência">Regra</th>
-                <th className="text-right font-medium pb-2">Usadas</th>
-                <th className="text-right font-medium pb-2" title="Usadas − regra, nas lojas que têm os dois">Usadas − regra</th>
-                {temEstoque && <th className="text-right font-medium pb-2">Estoque</th>}
+                <th className="text-right font-medium pb-2">Início</th>
+                <th className="text-right font-medium pb-2">+ Compradas</th>
+                <th className="text-right font-medium pb-2">− Usadas (regra)</th>
+                <th className="text-right font-medium pb-2">= Sobra</th>
               </tr>
             </thead>
             <tbody>
@@ -336,16 +357,17 @@ function TabelaHistorico({ meses, lojas, idx, mesSel, onSelecionar }) {
                   className={`border-t border-white/5 cursor-pointer hover:bg-white/[0.03] ${mes === mesSel ? 'bg-primary-500/10' : ''}`}
                 >
                   <td className="py-2 text-gray-200">{nomeMes(mes)}</td>
-                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.necessarias)}</td>
-                  <td className="py-2 text-right tabular-nums text-white font-medium">{fmt(t.usadas)}</td>
-                  <td className={`py-2 text-right tabular-nums ${t.difRegra === null ? 'text-gray-600' : t.difRegra === 0 ? 'text-emerald-400' : t.difRegra > 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                    {t.difRegra === null ? '—' : `${t.difRegra > 0 ? '+' : ''}${fmt(t.difRegra)}`}
-                  </td>
-                  {temEstoque && <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.estoque)}</td>}
+                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.inicio)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.compradas)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.usadas)}</td>
+                  <td className={`py-2 text-right tabular-nums font-medium ${t.sobra !== null && t.sobra < 0 ? 'text-red-400' : 'text-white'}`}>{fmt(t.sobra)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {linhas.some((l) => l.t.sobra !== null && l.t.sobra < 0) && (
+            <p className="mt-3 text-xs text-gray-500">Sobra negativa (em vermelho) = faltaram sacolas para cumprir a regra no mês.</p>
+          )}
         </div>
       )}
     </div>
@@ -362,7 +384,7 @@ function SacolasHistorico({ conferencia }) {
   const [mes, setMes] = useState(mesAtual())
   const mesEscolhido = useRef(false)
   const [margem, setMargemState] = useState(lerMargem)
-  const [ocupado, setOcupado] = useState(null) // 'itens' | 'estoque' | 'conferencia'
+  const [ocupado, setOcupado] = useState(null) // 'itens' | 'conferencia'
   const [aviso, setAviso] = useState(null) // { tipo: 'ok' | 'erro', texto }
   const avisoTimer = useRef(null)
 
@@ -392,23 +414,15 @@ function SacolasHistorico({ conferencia }) {
 
   const porChave = useMemo(() => new Map((registros || []).map((r) => [chave(r.mes, r.loja), r])), [registros])
   const idx = useMemo(() => indexa(registros || []), [registros])
-
-  // lojas que têm planilha de itens em algum mês (a consulta de estoque traz todas as lojas;
-  // as que nunca tiveram itens ficam guardadas, mas não aparecem)
-  const lojas = useMemo(() => {
-    const s = new Set((registros || []).filter((r) => r.necessarias != null || r.usadas).map((r) => r.loja))
-    return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [registros])
-
+  const lojas = useMemo(() => [...new Set((registros || []).map((r) => r.loja))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [registros])
   const meses = useMemo(() => [...new Set((registros || []).map((r) => r.mes))].sort().reverse(), [registros])
   const doMes = (registros || []).filter((r) => r.mes === mes)
   const arquivoItens = doMes.find((r) => r.arquivoItens)?.arquivoItens || null
-  const arquivoEstoque = doMes.find((r) => r.arquivoEstoque)?.arquivoEstoque || null
 
   const avisar = (tipo, texto) => {
     setAviso({ tipo, texto })
     clearTimeout(avisoTimer.current)
-    avisoTimer.current = setTimeout(() => setAviso(null), 5000)
+    avisoTimer.current = setTimeout(() => setAviso(null), 4000)
   }
 
   const handleEntrar = async (usuario, senha) => {
@@ -432,28 +446,19 @@ function SacolasHistorico({ conferencia }) {
     sair()
   }
 
-  // grava os dados de uma planilha no mês selecionado; lojas que estavam no envio anterior
-  // e não vieram no novo têm esses campos limpos (para não sobrar dado de outra planilha)
-  const gravarNoMes = async (porLoja, campos, limpar) => {
-    const lista = porLoja.map(({ loja, dados }) => ({
-      id: porChave.get(chave(mes, loja))?.id || idRegistro(mes, loja),
-      dados: { mes, loja, ...dados },
-    }))
-    const novas = new Set(porLoja.map((p) => p.loja))
+  const idDe = (loja) => porChave.get(chave(mes, loja))?.id || idRegistro(mes, loja)
+
+  // grava as necessárias da planilha no mês; lojas que estavam na planilha anterior e não
+  // vieram na nova perdem esse dado (compradas e estoque inicial digitados ficam)
+  const salvarItens = async (analise, arquivo) => {
+    if (arquivoItens && !window.confirm(`${nomeMes(mes)} já tem a planilha "${arquivoItens}". Substituir por "${arquivo}"?`)) return false
+    const grupos = agrupaAnalise(analise)
+    const lista = grupos.map((g) => ({ id: idDe(g.loja), dados: { mes, loja: g.loja, necessarias: g.necessarias, arquivoItens: arquivo } }))
+    const novas = new Set(grupos.map((g) => g.loja))
     for (const r of doMes) {
-      if (!novas.has(r.loja) && campos.some((c) => r[c] != null)) lista.push({ id: r.id, dados: limpar })
+      if (!novas.has(r.loja) && (r.necessarias != null || r.arquivoItens)) lista.push({ id: r.id, dados: { necessarias: null, arquivoItens: null } })
     }
     await salvarRegistros(lista, usuarioDe(user))
-  }
-
-  const salvarItens = async (analise, arquivo) => {
-    if (arquivoItens && !window.confirm(`${nomeMes(mes)} já tem a planilha de itens "${arquivoItens}". Substituir por "${arquivo}"?`)) return false
-    const grupos = agrupaAnalise(analise)
-    await gravarNoMes(
-      grupos.map((g) => ({ loja: g.loja, dados: { necessarias: g.necessarias, usadas: g.usadas, arquivoItens: arquivo } })),
-      ['necessarias', 'usadas', 'arquivoItens'],
-      { necessarias: null, usadas: null, arquivoItens: null },
-    )
     return true
   }
 
@@ -461,25 +466,7 @@ function SacolasHistorico({ conferencia }) {
     setOcupado('itens')
     try {
       const analise = analisaSacolas(await parseSacolasFile(file))
-      if (await salvarItens(analise, file.name)) avisar('ok', `Planilha de itens salva em ${nomeMes(mes)}.`)
-    } catch (e) {
-      avisar('erro', e.message)
-    } finally {
-      setOcupado(null)
-    }
-  }
-
-  const enviarEstoque = async (file) => {
-    setOcupado('estoque')
-    try {
-      const est = await parseEstoqueSacolasFile(file)
-      if (arquivoEstoque && !window.confirm(`${nomeMes(mes)} já tem a consulta de estoque "${arquivoEstoque}". Substituir por "${file.name}"?`)) return
-      await gravarNoMes(
-        Object.entries(est).map(([loja, estoque]) => ({ loja, dados: { estoque, arquivoEstoque: file.name } })),
-        ['estoque', 'arquivoEstoque'],
-        { estoque: null, arquivoEstoque: null },
-      )
-      avisar('ok', `Estoque de sacolas salvo em ${nomeMes(mes)}.`)
+      if (await salvarItens(analise, file.name)) avisar('ok', `Planilha salva em ${nomeMes(mes)}.`)
     } catch (e) {
       avisar('erro', e.message)
     } finally {
@@ -498,24 +485,19 @@ function SacolasHistorico({ conferencia }) {
     }
   }
 
-  // tira a planilha de itens ou a consulta de estoque do mês; lojas que ficariam sem
-  // nenhum dado no mês têm o registro apagado
-  const removerPlanilha = async (tipo) => {
-    const itens = tipo === 'itens'
-    const arquivo = itens ? arquivoItens : arquivoEstoque
-    if (!window.confirm(`Remover a ${itens ? 'planilha de itens' : 'consulta de estoque'} "${arquivo}" de ${nomeMes(mes)}?`)) return
-    const campos = itens ? ['necessarias', 'usadas', 'arquivoItens'] : ['estoque', 'arquivoEstoque']
-    const restantes = itens ? ['estoque'] : ['necessarias', 'usadas']
+  // tira a planilha do mês; compradas/estoque inicial digitados ficam (lojas sem nada são apagadas)
+  const removerPlanilha = async () => {
+    if (!window.confirm(`Remover a planilha "${arquivoItens}" de ${nomeMes(mes)}? As compradas digitadas continuam.`)) return
     const limpar = [], apagar = []
     for (const r of doMes) {
-      if (!campos.some((c) => r[c] != null)) continue
-      if (restantes.some((c) => r[c] != null)) limpar.push({ id: r.id, dados: Object.fromEntries(campos.map((c) => [c, null])) })
+      if (r.necessarias == null && !r.arquivoItens) continue
+      if (r.compradas != null || r.inicial != null) limpar.push({ id: r.id, dados: { necessarias: null, arquivoItens: null } })
       else apagar.push(r.id)
     }
-    setOcupado(tipo)
+    setOcupado('itens')
     try {
       await removerDoMes(limpar, apagar, usuarioDe(user))
-      avisar('ok', `${itens ? 'Planilha de itens' : 'Consulta de estoque'} removida de ${nomeMes(mes)}.`)
+      avisar('ok', `Planilha removida de ${nomeMes(mes)}.`)
     } catch (e) {
       avisar('erro', `Não removeu: ${e.code || e.message}`)
     } finally {
@@ -523,9 +505,18 @@ function SacolasHistorico({ conferencia }) {
     }
   }
 
+  const salvarCampo = async (loja, campo, valor) => {
+    try {
+      await salvarRegistros([{ id: idDe(loja), dados: { mes, loja, [campo]: valor } }], usuarioDe(user))
+      avisar('ok', 'Salvo.')
+    } catch (e) {
+      avisar('erro', `Não salvou: ${e.code || e.message}`)
+    }
+  }
+
   const excluir = async (loja) => {
     const reg = porChave.get(chave(mes, loja))
-    if (!reg || !window.confirm(`Apagar os dados de ${loja} em ${nomeMes(mes)}?`)) return
+    if (!reg || !window.confirm(`Apagar os dados de ${loja} em ${nomeMes(mes)} (planilha e compradas)?`)) return
     try {
       await excluirRegistro(reg.id)
     } catch (e) {
@@ -547,6 +538,8 @@ function SacolasHistorico({ conferencia }) {
   }
   if (!registros) return <p className="text-sm text-gray-500">Carregando histórico…</p>
 
+  // lojas com dados no mês ou no anterior (para continuar o saldo); as outras não aparecem no mês
+  const lojasDoMes = lojas.filter((l) => registroDe(idx, mes, l) || registroDe(idx, somaMes(mes, -1), l))
   const totais = totaisDoMes(idx, mes, lojas)
   const confNoMes = conferencia && arquivoItens === conferencia.fileName
 
@@ -575,10 +568,10 @@ function SacolasHistorico({ conferencia }) {
           </div>
         </div>
 
-        <div className={`grid gap-3 mt-5 ${arquivoEstoque ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          {[['Regra (necessárias)', totais?.necessarias], ['Usadas', totais?.usadas], ...(arquivoEstoque ? [['Estoque', totais?.estoque]] : [])].map(([l, v]) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+          {[['Estoque no início', totais?.inicio], ['+ Compradas', totais?.compradas], ['− Usadas pela regra', totais?.usadas], ['= Sobra no fim', totais?.sobra]].map(([l, v]) => (
             <div key={l} className="p-3 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-xl font-bold text-white tabular-nums">{fmt(v ?? null)}</span>
+              <span className={`text-xl font-bold tabular-nums ${v != null && v < 0 ? 'text-red-400' : 'text-white'}`}>{fmt(v ?? null)}</span>
               <p className="text-xs text-gray-400">{l}</p>
             </div>
           ))}
@@ -589,7 +582,7 @@ function SacolasHistorico({ conferencia }) {
       <div className="glass rounded-2xl p-6">
         <h4 className="text-base font-semibold text-white mb-1">Planilha de {nomeMes(mes)}</h4>
         <p className="text-xs text-gray-500 mb-4">
-          A mesma planilha da conferência (itens_month ou presencial). Ela dá a regra e as sacolas usadas de cada loja.
+          A mesma da conferência (itens_month ou presencial), com as vendas do mês. Ela dá quantas sacolas cada loja usou pela regra.
           Pode arrastar o arquivo para cima do quadro.
         </p>
         <EnvioPlanilha
@@ -597,14 +590,14 @@ function SacolasHistorico({ conferencia }) {
           ajuda="itens_month ou presencial"
           arquivo={arquivoItens}
           onArquivo={enviarItens}
-          onRemover={() => removerPlanilha('itens')}
+          onRemover={removerPlanilha}
           ocupado={ocupado === 'itens'}
         />
         {conferencia?.analise?.length > 0 && !confNoMes && (
           <div className="flex flex-wrap items-center gap-3 mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
             <ClipboardCheck className="w-4 h-4 text-gold-400 shrink-0" />
             <span className="text-sm text-gray-300 flex-1 min-w-[200px]">
-              Há uma planilha aberta na Conferência{conferencia.fileName ? ` (${conferencia.fileName})` : ''}, com as usadas como estão nos cards.
+              Há uma planilha aberta na Conferência{conferencia.fileName ? ` (${conferencia.fileName})` : ''}.
             </span>
             <button
               onClick={usarConferencia}
@@ -615,34 +608,29 @@ function SacolasHistorico({ conferencia }) {
             </button>
           </div>
         )}
-
-        <div className="mt-5 pt-4 border-t border-white/10">
-          <p className="text-xs text-gray-500 mb-2">
-            <b className="text-gray-400">Opcional:</b> para a meta descontar as sacolas que as lojas já têm, suba também a consulta de estoque.
-          </p>
-          <EnvioPlanilha
-            titulo="Consulta de estoque (opcional)"
-            ajuda="CONSULTA_DE_ESTOQUE — estoque de sacolas PP/P/M/G"
-            arquivo={arquivoEstoque}
-            onArquivo={enviarEstoque}
-            onRemover={() => removerPlanilha('estoque')}
-            ocupado={ocupado === 'estoque'}
-          />
-        </div>
       </div>
 
-      <TabelaMeta lojas={lojas} idx={idx} mes={mes} margem={margem} setMargem={setMargem} temEstoque={!!arquivoEstoque} />
-
-      {lojas.length > 0 && (
+      {lojasDoMes.length > 0 && (
         <div>
-          <h4 className="text-base font-semibold text-white mb-3">Por loja em {nomeMes(mes)}</h4>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {lojas.map((loja) => (
-              <CartaoLoja key={loja} loja={loja} mes={mes} reg={registroDe(idx, mes, loja)} onExcluir={() => excluir(loja)} />
+          <h4 className="text-base font-semibold text-white mb-1">Saldo por loja em {nomeMes(mes)}</h4>
+          <p className="text-xs text-gray-500 mb-3">Digite as sacolas compradas no mês; salva sozinho ao sair do campo.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {lojasDoMes.map((loja) => (
+              <CartaoLoja
+                key={loja}
+                loja={loja}
+                mes={mes}
+                s={saldoMes(idx, mes, loja)}
+                reg={registroDe(idx, mes, loja)}
+                onSalvar={(campo, v) => salvarCampo(loja, campo, v)}
+                onExcluir={() => excluir(loja)}
+              />
             ))}
           </div>
         </div>
       )}
+
+      <TabelaMeta lojas={lojasDoMes} idx={idx} mes={mes} margem={margem} setMargem={setMargem} />
 
       <TabelaHistorico meses={meses} lojas={lojas} idx={idx} mesSel={mes} onSelecionar={setMes} />
 
