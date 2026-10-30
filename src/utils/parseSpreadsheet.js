@@ -41,7 +41,7 @@ const columnMappings = {
   compraInteligente: ['compra inteligente semanal']
 }
 
-function normalizeString(str) {
+export function normalizeString(str) {
   if (!str) return ''
   return str
     .toString()

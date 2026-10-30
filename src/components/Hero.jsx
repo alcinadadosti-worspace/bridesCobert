@@ -9,7 +9,7 @@ const capacidades = [
   { icon: AlertOctagon, nome: 'Ruptura', desc: 'venda prevista, mas sem estoque' },
   { icon: ArrowLeftRight, nome: 'Transferências', desc: 'remanejar excesso entre lojas' },
   { icon: PackageX, nome: 'Estoque parado', desc: 'giro lento por loja' },
-  { icon: ShoppingBag, nome: 'Sacolas', desc: 'conferência da regra por loja' },
+  { icon: ShoppingBag, nome: 'Sacolas', desc: 'conferência da regra, histórico e meta de compra' },
 ]
 
 function Hero({ onDataLoaded, onGoToSacolas }) {
@@ -72,7 +72,7 @@ function Hero({ onDataLoaded, onGoToSacolas }) {
                 className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
               >
                 <ShoppingBag className="w-4 h-4 text-gold-400" />
-                Conferir sacolas de uma planilha de vendas
+                Sacolas: conferência, histórico e meta de compra
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -83,7 +83,7 @@ function Hero({ onDataLoaded, onGoToSacolas }) {
       {/* Footer */}
       <footer className="w-full px-6 lg:px-10 py-5 border-t border-white/5">
         <div className="max-w-6xl mx-auto text-xs text-gray-500">
-          Processamento 100% local. Seus dados nunca saem do navegador.
+          As planilhas são processadas no navegador e não saem dele. Só o histórico de sacolas fica salvo na nuvem.
         </div>
       </footer>
     </motion.div>

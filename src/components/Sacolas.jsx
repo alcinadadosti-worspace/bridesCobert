@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ShoppingBag, Upload, AlertCircle, CheckCircle2, AlertTriangle, RotateCcw, Store, Package, BarChart3 } from 'lucide-react'
 import { useFileDrop } from '../hooks/useFileDrop'
@@ -199,7 +199,7 @@ function GraficoComposicao({ analise }) {
   )
 }
 
-function Sacolas() {
+function Sacolas({ onAnalise }) {
   const fileRef = useRef(null)
   const [rows, setRows] = useState(null)
   const [fileName, setFileName] = useState('')
@@ -222,6 +222,11 @@ function Sacolas() {
   const { isDragging, error, clearError, handlers, handleFileInput } = useFileDrop(handleFile)
 
   const analise = useMemo(() => (rows ? analisaSacolas(rows) : []), [rows])
+
+  // avisa o histórico qual conferência está carregada (para guardar a regra do mês)
+  useEffect(() => {
+    onAnalise?.(rows ? { analise, fileName } : null)
+  }, [rows, analise, fileName, onAnalise])
 
   const setBag = (uni, size, val) =>
     setBags((prev) => ({

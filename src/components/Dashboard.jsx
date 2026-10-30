@@ -7,7 +7,7 @@ import TransferSuggestions from './TransferSuggestions'
 import ClassCoverage from './ClassCoverage'
 import EstoqueParado from './EstoqueParado'
 import Ruptura from './Ruptura'
-import Sacolas from './Sacolas'
+import SacolasModulo from './SacolasModulo'
 import CoverageSlider from './CoverageSlider'
 import { analyzeData, analyzeTransfers } from '../utils/parseSpreadsheet'
 import logoUrl from '../assets/logo.png'
@@ -422,7 +422,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
             <Ruptura items={items} targetCoverage={targetCoverage} editedQty={editedQty} onEditQty={handleEditQty} />
           )}
           {activeTab === 'sacolas' && (
-            <Sacolas />
+            <SacolasModulo />
           )}
         </section>
       </main>
@@ -430,7 +430,7 @@ function Dashboard({ data, targetCoverage, setTargetCoverage, leadTime, setLeadT
       {/* Footer */}
       <footer className="border-t border-white/5 mt-12">
         <div className="w-full px-4 lg:px-8 py-6 text-center text-sm text-gray-500">
-          Processamento 100% local. Seus dados nunca saem do navegador.
+          As planilhas são processadas no navegador e não saem dele. Só o histórico de sacolas fica salvo na nuvem.
         </div>
       </footer>
     </motion.div>

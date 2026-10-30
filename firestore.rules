@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Regras do Firestore do histórico de sacolas (projeto sacolas-b5dc9).
+// Colar em: Firebase Console → Firestore Database → Regras → Publicar.
+//
+// Quem pode acessar: contas Google cujo e-mail exista como ID de documento na coleção
+// "permitidos" (ex.: permitidos/fulano@gmail.com, tudo minúsculo). Essa coleção só é
+// editada pelo console — o app não consegue ler nem gravar nela.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function permitido() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/permitidos/$(request.auth.token.email));
+    }
+
+    match /sacolas_mensal/{id} {
+      allow read, write: if permitido();
+    }
+  }
+}

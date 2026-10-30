@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
-import Sacolas from './Sacolas'
+import SacolasModulo from './SacolasModulo'
 import logoUrl from '../assets/logo.png'
 
-// Página standalone da conferência de sacolas — acessível direto da tela inicial,
+// Página standalone de sacolas (conferência + histórico) — acessível direto da tela inicial,
 // sem precisar importar a planilha de estoque antes.
 function SacolasPage({ onBack }) {
   return (
@@ -21,7 +21,7 @@ function SacolasPage({ onBack }) {
               <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain" />
               <div>
                 <h1 className="text-xl font-bold text-white">Supply Flow</h1>
-                <p className="text-sm text-gray-400">Conferência de Sacolas</p>
+                <p className="text-sm text-gray-400">Sacolas</p>
               </div>
             </div>
             <button
@@ -39,7 +39,7 @@ function SacolasPage({ onBack }) {
       </header>
 
       <main className="w-full px-4 lg:px-8 py-8 max-w-6xl mx-auto">
-        <Sacolas />
+        <SacolasModulo />
       </main>
     </motion.div>
   )
