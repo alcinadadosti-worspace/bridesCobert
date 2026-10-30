@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { History, ChevronLeft, ChevronRight, LogOut, Store, ShoppingCart, Trash2, AlertCircle, CheckCircle2, ClipboardCheck, Lock, FileSpreadsheet } from 'lucide-react'
-import { observarUsuario, usuarioDe, entrar, sair, observarRegistros, salvarRegistros, excluirRegistro } from '../lib/sacolasCloud'
+import { observarUsuario, usuarioDe, entrar, sair, observarRegistros, salvarRegistros, excluirRegistro, removerDoMes } from '../lib/sacolasCloud'
 import { parseSacolasFile, analisaSacolas, parseEstoqueSacolasFile } from '../utils/parseSpreadsheet'
 import { useFileDrop } from '../hooks/useFileDrop'
 import {
@@ -99,7 +99,7 @@ function TelaSemAcesso({ usuario, onSair }) {
 }
 
 // ---------- envio das planilhas do mês ----------
-function EnvioPlanilha({ titulo, ajuda, arquivo, onArquivo, ocupado }) {
+function EnvioPlanilha({ titulo, ajuda, arquivo, onArquivo, onRemover, ocupado }) {
   const ref = useRef(null)
   const { isDragging, error, clearError, handlers, handleFileInput } = useFileDrop(onArquivo)
   return (
@@ -119,12 +119,20 @@ function EnvioPlanilha({ titulo, ajuda, arquivo, onArquivo, ocupado }) {
             <p className="text-xs text-gray-500">{ajuda}</p>
           )}
         </div>
+        {arquivo && !ocupado && (
+          <button
+            onClick={onRemover}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-red-400 hover:bg-white/5 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" /> Remover
+          </button>
+        )}
         <button
           onClick={() => ref.current?.click()}
           disabled={ocupado}
           className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-sm text-white hover:bg-white/15 transition-colors disabled:opacity-60"
         >
-          {ocupado ? 'Lendo…' : arquivo ? 'Trocar planilha' : 'Subir planilha'}
+          {ocupado ? 'Aguarde…' : arquivo ? 'Trocar planilha' : 'Subir planilha'}
         </button>
         <input
           ref={ref}
@@ -490,6 +498,31 @@ function SacolasHistorico({ conferencia }) {
     }
   }
 
+  // tira a planilha de itens ou a consulta de estoque do mês; lojas que ficariam sem
+  // nenhum dado no mês têm o registro apagado
+  const removerPlanilha = async (tipo) => {
+    const itens = tipo === 'itens'
+    const arquivo = itens ? arquivoItens : arquivoEstoque
+    if (!window.confirm(`Remover a ${itens ? 'planilha de itens' : 'consulta de estoque'} "${arquivo}" de ${nomeMes(mes)}?`)) return
+    const campos = itens ? ['necessarias', 'usadas', 'arquivoItens'] : ['estoque', 'arquivoEstoque']
+    const restantes = itens ? ['estoque'] : ['necessarias', 'usadas']
+    const limpar = [], apagar = []
+    for (const r of doMes) {
+      if (!campos.some((c) => r[c] != null)) continue
+      if (restantes.some((c) => r[c] != null)) limpar.push({ id: r.id, dados: Object.fromEntries(campos.map((c) => [c, null])) })
+      else apagar.push(r.id)
+    }
+    setOcupado(tipo)
+    try {
+      await removerDoMes(limpar, apagar, usuarioDe(user))
+      avisar('ok', `${itens ? 'Planilha de itens' : 'Consulta de estoque'} removida de ${nomeMes(mes)}.`)
+    } catch (e) {
+      avisar('erro', `Não removeu: ${e.code || e.message}`)
+    } finally {
+      setOcupado(null)
+    }
+  }
+
   const excluir = async (loja) => {
     const reg = porChave.get(chave(mes, loja))
     if (!reg || !window.confirm(`Apagar os dados de ${loja} em ${nomeMes(mes)}?`)) return
@@ -564,6 +597,7 @@ function SacolasHistorico({ conferencia }) {
           ajuda="itens_month ou presencial"
           arquivo={arquivoItens}
           onArquivo={enviarItens}
+          onRemover={() => removerPlanilha('itens')}
           ocupado={ocupado === 'itens'}
         />
         {conferencia?.analise?.length > 0 && !confNoMes && (
@@ -591,6 +625,7 @@ function SacolasHistorico({ conferencia }) {
             ajuda="CONSULTA_DE_ESTOQUE — estoque de sacolas PP/P/M/G"
             arquivo={arquivoEstoque}
             onArquivo={enviarEstoque}
+            onRemover={() => removerPlanilha('estoque')}
             ocupado={ocupado === 'estoque'}
           />
         </div>

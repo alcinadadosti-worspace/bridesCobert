@@ -49,3 +49,14 @@ export async function salvarRegistros(lista, email) {
 }
 
 export const excluirRegistro = (id) => deleteDoc(doc(db, COLECAO, id))
+
+// tira uma planilha do mês: `limpar` = [{ id, dados }] com os campos dela em null;
+// `apagar` = ids que ficariam vazios e são removidos — tudo de uma vez
+export async function removerDoMes(limpar, apagar, usuario) {
+  const batch = writeBatch(db)
+  for (const { id, dados } of limpar) {
+    batch.set(doc(db, COLECAO, id), { ...dados, atualizadoEm: serverTimestamp(), atualizadoPor: usuario || null }, { merge: true })
+  }
+  for (const id of apagar) batch.delete(doc(db, COLECAO, id))
+  await batch.commit()
+}
