@@ -40,6 +40,10 @@ export function idRegistro(mes, loja) {
 const chave = (mes, loja) => `${mes}|${loja}`
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
+// registro com algum dado deste modelo (versões antigas do app gravaram registros só com
+// estoque/usadas, que agora são ignorados)
+export const temDados = (r) => num(r?.necessarias) !== null || num(r?.compradas) !== null || num(r?.inicial) !== null
+
 export function indexa(registros) {
   const map = new Map()
   for (const r of registros) map.set(chave(r.mes, r.loja), r)
@@ -92,13 +96,19 @@ export function metaProximoMes(idx, mes, loja, margemPct) {
   return { ...base, sobra: disponivel, meta: Math.max(0, alvo - disponivel), motivo: null }
 }
 
-// Totais de um mês somando lojas (tabela mês a mês); null onde nenhuma loja tem o dado
+// Totais de um mês somando lojas (tabela mês a mês); null onde nenhuma loja tem o dado.
+// A falta de uma loja não desconta da sobra das outras: sobra soma só o que sobrou de fato
+// e faltaram soma as sacolas que faltaram para cumprir a regra.
 export function totaisDoMes(idx, mes, lojas) {
   const saldos = lojas.map((l) => saldoMes(idx, mes, l)).filter((s) => s.existe)
   if (saldos.length === 0) return null
-  const soma = (campo) => {
-    const vals = saldos.map((s) => s[campo]).filter((v) => v !== null)
-    return vals.length ? vals.reduce((a, v) => a + v, 0) : null
+  const soma = (vals) => (vals.length ? vals.reduce((a, v) => a + v, 0) : null)
+  const sobras = saldos.map((s) => s.sobra).filter((v) => v !== null)
+  return {
+    inicio: soma(saldos.map((s) => s.inicio).filter((v) => v !== null)),
+    compradas: soma(saldos.map((s) => s.compradas)),
+    usadas: soma(saldos.map((s) => s.usadas).filter((v) => v !== null)),
+    sobra: soma(sobras.map((v) => Math.max(0, v))),
+    faltaram: sobras.reduce((a, v) => a + Math.max(0, -v), 0),
   }
-  return { inicio: soma('inicio'), compradas: soma('compradas'), usadas: soma('usadas'), sobra: soma('sobra') }
 }

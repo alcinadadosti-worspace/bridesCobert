@@ -6,7 +6,7 @@ import { parseSacolasFile, analisaSacolas } from '../utils/parseSpreadsheet'
 import { useFileDrop } from '../hooks/useFileDrop'
 import {
   JANELA_MESES, mesAtual, somaMes, nomeMes, idRegistro,
-  indexa, registroDe, agrupaAnalise, saldoMes, metaProximoMes, totaisDoMes,
+  indexa, registroDe, agrupaAnalise, saldoMes, metaProximoMes, totaisDoMes, temDados,
 } from '../utils/sacolasHistorico'
 
 const chave = (mes, loja) => `${mes}|${loja}`
@@ -360,13 +360,16 @@ function TabelaHistorico({ meses, lojas, idx, mesSel, onSelecionar }) {
                   <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.inicio)}</td>
                   <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.compradas)}</td>
                   <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.usadas)}</td>
-                  <td className={`py-2 text-right tabular-nums font-medium ${t.sobra !== null && t.sobra < 0 ? 'text-red-400' : 'text-white'}`}>{fmt(t.sobra)}</td>
+                  <td className="py-2 text-right tabular-nums font-medium text-white">
+                    {fmt(t.sobra)}
+                    {t.faltaram > 0 && <span className="ml-1.5 text-xs font-normal text-red-400">(faltaram {fmt(t.faltaram)})</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {linhas.some((l) => l.t.sobra !== null && l.t.sobra < 0) && (
-            <p className="mt-3 text-xs text-gray-500">Sobra negativa (em vermelho) = faltaram sacolas para cumprir a regra no mês.</p>
+          {linhas.some((l) => l.t.faltaram > 0) && (
+            <p className="mt-3 text-xs text-gray-500">Faltaram = sacolas que a regra pedia além do estoque; a loja começa o mês seguinte com 0.</p>
           )}
         </div>
       )}
@@ -403,7 +406,7 @@ function SacolasHistorico({ conferencia }) {
     if (!registros || mesEscolhido.current) return
     mesEscolhido.current = true
     const hoje = mesAtual()
-    const ult = registros.map((r) => r.mes).filter((m) => m <= hoje).sort().pop()
+    const ult = registros.filter(temDados).map((r) => r.mes).filter((m) => m <= hoje).sort().pop()
     if (ult) setMes(ult)
   }, [registros])
 
@@ -413,9 +416,11 @@ function SacolasHistorico({ conferencia }) {
   }
 
   const porChave = useMemo(() => new Map((registros || []).map((r) => [chave(r.mes, r.loja), r])), [registros])
-  const idx = useMemo(() => indexa(registros || []), [registros])
-  const lojas = useMemo(() => [...new Set((registros || []).map((r) => r.loja))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [registros])
-  const meses = useMemo(() => [...new Set((registros || []).map((r) => r.mes))].sort().reverse(), [registros])
+  // cálculos só com registros deste modelo; porChave/doMes usam todos (ids e limpeza)
+  const validos = useMemo(() => (registros || []).filter(temDados), [registros])
+  const idx = useMemo(() => indexa(validos), [validos])
+  const lojas = useMemo(() => [...new Set(validos.map((r) => r.loja))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [validos])
+  const meses = useMemo(() => [...new Set(validos.map((r) => r.mes))].sort().reverse(), [validos])
   const doMes = (registros || []).filter((r) => r.mes === mes)
   const arquivoItens = doMes.find((r) => r.arquivoItens)?.arquivoItens || null
 
@@ -449,16 +454,20 @@ function SacolasHistorico({ conferencia }) {
   const idDe = (loja) => porChave.get(chave(mes, loja))?.id || idRegistro(mes, loja)
 
   // grava as necessárias da planilha no mês; lojas que estavam na planilha anterior e não
-  // vieram na nova perdem esse dado (compradas e estoque inicial digitados ficam)
+  // vieram na nova perdem esse dado (compradas e estoque inicial digitados ficam; se não
+  // sobrar nada, o registro é apagado)
   const salvarItens = async (analise, arquivo) => {
     if (arquivoItens && !window.confirm(`${nomeMes(mes)} já tem a planilha "${arquivoItens}". Substituir por "${arquivo}"?`)) return false
     const grupos = agrupaAnalise(analise)
-    const lista = grupos.map((g) => ({ id: idDe(g.loja), dados: { mes, loja: g.loja, necessarias: g.necessarias, arquivoItens: arquivo } }))
+    const gravar = grupos.map((g) => ({ id: idDe(g.loja), dados: { mes, loja: g.loja, necessarias: g.necessarias, arquivoItens: arquivo } }))
     const novas = new Set(grupos.map((g) => g.loja))
+    const apagar = []
     for (const r of doMes) {
-      if (!novas.has(r.loja) && (r.necessarias != null || r.arquivoItens)) lista.push({ id: r.id, dados: { necessarias: null, arquivoItens: null } })
+      if (novas.has(r.loja) || (r.necessarias == null && !r.arquivoItens)) continue
+      if (r.compradas != null || r.inicial != null) gravar.push({ id: r.id, dados: { necessarias: null, arquivoItens: null } })
+      else apagar.push(r.id)
     }
-    await salvarRegistros(lista, usuarioDe(user))
+    await removerDoMes(gravar, apagar, usuarioDe(user))
     return true
   }
 
@@ -569,10 +578,11 @@ function SacolasHistorico({ conferencia }) {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          {[['Estoque no início', totais?.inicio], ['+ Compradas', totais?.compradas], ['− Usadas pela regra', totais?.usadas], ['= Sobra no fim', totais?.sobra]].map(([l, v]) => (
+          {[['Estoque no início', totais?.inicio], ['+ Compradas', totais?.compradas], ['− Usadas pela regra', totais?.usadas], ['= Sobra no fim', totais?.sobra]].map(([l, v], i) => (
             <div key={l} className="p-3 rounded-xl bg-white/5 border border-white/10">
-              <span className={`text-xl font-bold tabular-nums ${v != null && v < 0 ? 'text-red-400' : 'text-white'}`}>{fmt(v ?? null)}</span>
+              <span className="text-xl font-bold tabular-nums text-white">{fmt(v ?? null)}</span>
               <p className="text-xs text-gray-400">{l}</p>
+              {i === 3 && totais?.faltaram > 0 && <p className="text-[11px] text-red-400">faltaram {fmt(totais.faltaram)}</p>}
             </div>
           ))}
         </div>
