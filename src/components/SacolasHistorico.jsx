@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { History, ChevronLeft, ChevronRight, LogOut, Store, ShoppingCart, Trash2, Plus, Save, AlertCircle, CheckCircle2, ClipboardCheck, Lock } from 'lucide-react'
-import { observarUsuario, entrar, sair, observarRegistros, salvarRegistros, excluirRegistro } from '../lib/sacolasCloud'
+import { observarUsuario, usuarioDe, entrar, sair, observarRegistros, salvarRegistros, excluirRegistro } from '../lib/sacolasCloud'
 import { STORE_NAMES } from '../utils/parseSpreadsheet'
 import {
   TAMANHOS, JANELA_MESES, mesAtual, somaMes, nomeMes, canonLoja, idRegistro,
@@ -22,31 +22,58 @@ function lerMargem() {
   try { const v = parseInt(localStorage.getItem(MARGEM_KEY), 10); return Number.isFinite(v) ? v : 10 } catch { return 10 }
 }
 
+const SENHA_ERRADA = 'Usuário ou senha incorretos.'
 const MSG_LOGIN = {
-  'auth/unauthorized-domain': 'Este endereço do site ainda não está liberado no Firebase (Authentication → Settings → Authorized domains).',
-  'auth/popup-blocked': 'O navegador bloqueou a janela de login. Libere pop-ups para este site e tente de novo.',
-  'auth/operation-not-allowed': 'O login com Google não está ativado no Firebase (Authentication → Sign-in method).',
+  'auth/invalid-credential': SENHA_ERRADA,
+  'auth/invalid-login-credentials': SENHA_ERRADA,
+  'auth/wrong-password': SENHA_ERRADA,
+  'auth/user-not-found': SENHA_ERRADA,
+  'auth/invalid-email': SENHA_ERRADA,
+  'auth/user-disabled': 'Este usuário está desativado.',
+  'auth/too-many-requests': 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.',
+  'auth/network-request-failed': 'Sem conexão com a internet.',
+  'auth/operation-not-allowed': 'O login por usuário e senha não está ativado no Firebase (Authentication → Sign-in method → E-mail/senha).',
 }
+
+const campoLogin = `w-full px-3 py-2 text-sm text-white bg-[#0f1a14] border border-white/10 rounded-lg
+  placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50`
 
 // ---------- telas de acesso ----------
 function TelaLogin({ onEntrar, erro, entrando }) {
+  const [usuario, setUsuario] = useState('')
+  const [senha, setSenha] = useState('')
+  const enviar = (e) => {
+    e.preventDefault()
+    onEntrar(usuario.trim().toLowerCase(), senha)
+  }
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6 max-w-xl">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6 max-w-md">
       <div className="flex items-center gap-2 mb-2">
         <History className="w-5 h-5 text-gold-400" />
         <h3 className="text-lg font-semibold text-white">Histórico de sacolas</h3>
       </div>
       <p className="text-sm text-gray-400 mb-5">
         Compras e sobras de cada mês ficam salvas na nuvem, por loja e tamanho. Com elas o app calcula
-        quanto foi consumido e quanto comprar no mês seguinte. Entre com a conta Google cadastrada para acessar.
+        quanto foi consumido e quanto comprar no mês seguinte.
       </p>
-      <button
-        onClick={onEntrar}
-        disabled={entrando}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-60"
-      >
-        <Lock className="w-4 h-4" /> {entrando ? 'Abrindo login…' : 'Entrar com Google'}
-      </button>
+      <form onSubmit={enviar} className="space-y-3">
+        <label className="block">
+          <span className="block text-xs text-gray-400 mb-1">Usuário</span>
+          <input value={usuario} onChange={(e) => setUsuario(e.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required className={campoLogin} />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-gray-400 mb-1">Senha</span>
+          <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="current-password" required className={campoLogin} />
+        </label>
+        <button
+          type="submit"
+          disabled={entrando}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-60"
+        >
+          <Lock className="w-4 h-4" /> {entrando ? 'Entrando…' : 'Entrar'}
+        </button>
+      </form>
       {erro && (
         <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -57,7 +84,7 @@ function TelaLogin({ onEntrar, erro, entrando }) {
   )
 }
 
-function TelaSemAcesso({ email, onSair }) {
+function TelaSemAcesso({ usuario, onSair }) {
   return (
     <div className="glass rounded-2xl p-6 max-w-xl">
       <div className="flex items-center gap-2 mb-2">
@@ -65,11 +92,11 @@ function TelaSemAcesso({ email, onSair }) {
         <h3 className="text-lg font-semibold text-white">Sem acesso ao histórico</h3>
       </div>
       <p className="text-sm text-gray-400 mb-5">
-        A conta <b className="text-gray-200">{email}</b> ainda não está cadastrada. Peça para quem administra o
-        Firebase criar um documento com este e-mail na coleção <code className="text-gray-300">permitidos</code>.
+        O usuário <b className="text-gray-200">{usuario}</b> entrou, mas ainda não está liberado. Peça para quem administra o
+        Firebase criar o documento <code className="text-gray-300">{usuario}</code> na coleção <code className="text-gray-300">permitidos</code>.
       </p>
       <button onClick={onSair} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 transition-colors">
-        <LogOut className="w-4 h-4" /> Entrar com outra conta
+        <LogOut className="w-4 h-4" /> Entrar com outro usuário
       </button>
     </div>
   )
@@ -405,15 +432,17 @@ function SacolasHistorico({ conferencia }) {
     return [...new Set([...daConf, ...Object.values(STORE_NAMES)])].filter((l) => !lojas.includes(l))
   }, [conferencia, lojas])
 
-  const handleEntrar = async () => {
+  const handleEntrar = async (usuario, senha) => {
     setErroLogin('')
+    if (!/^[a-z0-9._-]+$/.test(usuario)) {
+      setErroLogin('Digite só o nome de usuário: letras, números, ponto, hífen ou _ (sem espaços e sem @).')
+      return
+    }
     setEntrando(true)
     try {
-      await entrar()
+      await entrar(usuario, senha)
     } catch (e) {
-      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-        setErroLogin(MSG_LOGIN[e.code] || `Não foi possível entrar (${e.code || e.message}).`)
-      }
+      setErroLogin(MSG_LOGIN[e.code] || `Não foi possível entrar (${e.code || e.message}).`)
     } finally {
       setEntrando(false)
     }
@@ -451,7 +480,7 @@ function SacolasHistorico({ conferencia }) {
           dados: { mes: m, loja, inicial: paraNum(r.inicial), compradas: paraNum(r.compradas), sobra: paraNum(r.sobra) },
         }
       })
-      await salvarRegistros(lista, user.email)
+      await salvarRegistros(lista, usuarioDe(user))
       setRascunhos({})
       avisar('ok', 'Salvo.')
     } catch (e) {
@@ -482,7 +511,7 @@ function SacolasHistorico({ conferencia }) {
           id: porChave.get(chave(mes, c.loja))?.id || idRegistro(mes, c.loja),
           dados: { mes, loja: c.loja, necessarias: c.necessarias },
         })),
-        user.email,
+        usuarioDe(user),
       )
       avisar('ok', `Regra guardada em ${nomeMes(mes)}.`)
     } catch (e) {
@@ -493,7 +522,7 @@ function SacolasHistorico({ conferencia }) {
   // ---- acesso ----
   if (user === undefined) return <p className="text-sm text-gray-500">Verificando acesso…</p>
   if (user === null) return <TelaLogin onEntrar={handleEntrar} erro={erroLogin} entrando={entrando} />
-  if (erroDados === 'permission-denied') return <TelaSemAcesso email={user.email} onSair={handleSair} />
+  if (erroDados === 'permission-denied') return <TelaSemAcesso usuario={usuarioDe(user)} onSair={handleSair} />
   if (erroDados) {
     return (
       <div className="glass rounded-2xl p-6 max-w-xl flex items-start gap-2">
@@ -528,7 +557,7 @@ function SacolasHistorico({ conferencia }) {
             )}
           </div>
           <div className="flex items-center gap-3 text-xs text-gray-500 min-w-0">
-            <span className="truncate max-w-[200px]" title={user.email}>{user.email}</span>
+            <span className="truncate max-w-[200px]">{usuarioDe(user)}</span>
             <button onClick={handleSair} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-colors">
               <LogOut className="w-3.5 h-3.5" /> Sair
             </button>
