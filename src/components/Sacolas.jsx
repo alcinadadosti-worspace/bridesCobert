@@ -6,6 +6,11 @@ import { parseSacolasFile, analisaSacolas } from '../utils/parseSpreadsheet'
 
 const SIZES = [['pp', 'PP'], ['p', 'P'], ['m', 'M'], ['g', 'G']]
 
+// sacolas usadas que vieram nas linhas SACOLA da planilha → valores iniciais dos campos
+const usadasDaPlanilha = (analise) => Object.fromEntries(
+  analise.filter((u) => u.usadas).map((u) => [u.unidade, Object.fromEntries(SIZES.map(([k]) => [k, String(u.usadas[k])]))]),
+)
+
 // status a partir de (usadas x necessárias)
 function statusDe(usadas, necessarias) {
   const dif = usadas - necessarias
@@ -100,7 +105,10 @@ function StoreCard({ u, valores, onSet, usadas }) {
       </div>
 
       {/* inputs */}
-      <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">Sacolas usadas por tamanho</p>
+      <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">
+        Sacolas usadas por tamanho
+        <span className="normal-case tracking-normal text-gray-600">{u.usadas ? ' · lidas da planilha' : ' · a planilha não traz, digite'}</span>
+      </p>
       <div className="grid grid-cols-4 gap-2">
         {SIZES.map(([k, label]) => (
           <div key={k}>
@@ -212,7 +220,7 @@ function Sacolas({ onAnalise }) {
       const r = await parseSacolasFile(file)
       setRows(r)
       setFileName(file.name)
-      setBags({})
+      setBags(usadasDaPlanilha(analisaSacolas(r)))
     } catch (e) {
       alert(e.message)
     } finally {
@@ -223,10 +231,17 @@ function Sacolas({ onAnalise }) {
 
   const analise = useMemo(() => (rows ? analisaSacolas(rows) : []), [rows])
 
-  // avisa o histórico qual conferência está carregada (para guardar a regra do mês)
+  // avisa o histórico qual conferência está carregada (para guardar no mês), já com as
+  // usadas como estão nos cards (lidas da planilha ou corrigidas à mão)
   useEffect(() => {
-    onAnalise?.(rows ? { analise, fileName } : null)
-  }, [rows, analise, fileName, onAnalise])
+    if (!rows) { onAnalise?.(null); return }
+    const comUsadas = analise.map((u) => {
+      const b = bags[u.unidade]
+      const temValor = b && SIZES.some(([k]) => b[k] !== '' && b[k] != null)
+      return { ...u, usadas: temValor ? Object.fromEntries(SIZES.map(([k]) => [k, parseInt(b[k], 10) || 0])) : null }
+    })
+    onAnalise?.({ analise: comUsadas, fileName })
+  }, [rows, analise, bags, fileName, onAnalise])
 
   const setBag = (uni, size, val) =>
     setBags((prev) => ({
@@ -250,6 +265,7 @@ function Sacolas({ onAnalise }) {
         <p className="text-xs text-gray-500 mb-5">
           Regra: a cada <b className="text-gray-300">3 itens</b> = 1 sacola · suporte à venda não conta ·
           Kit/Combo/Estojo = 1 sacola por item. Suba a planilha de itens (formato <b className="text-gray-300">itens_month</b> ou <b className="text-gray-300">presencial</b>).
+          As sacolas usadas por tamanho são lidas das linhas SACOLA PP/P/M/G da planilha.
         </p>
         <div
           {...handlers}
@@ -301,7 +317,7 @@ function Sacolas({ onAnalise }) {
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
-          Regra: a cada 3 itens = 1 sacola · Kit/Combo/Estojo = 1 por item · suporte à venda fica fora. Informe as sacolas usadas por loja nos cards abaixo.
+          Regra: a cada 3 itens = 1 sacola · Kit/Combo/Estojo = 1 por item · suporte à venda fica fora. As sacolas usadas vêm das linhas SACOLA da planilha; corrija nos cards abaixo se precisar.
         </p>
       </motion.div>
 

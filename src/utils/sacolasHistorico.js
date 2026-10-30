@@ -1,12 +1,12 @@
 import { STORE_NAMES, normalizeString } from './parseSpreadsheet'
 
 // ==================== HISTÓRICO DE SACOLAS ====================
-// Por mês × loja × tamanho:
-//   início do mês = sobra do fim do mês anterior (ou digitado, no primeiro mês)
-//   consumo       = início + compradas − sobra no fim do mês
-// Meta de compra do mês seguinte (por tamanho):
-//   média do consumo dos últimos 3 meses × (1 + margem) − sobra atual, nunca negativa
-// Tamanho sem nenhum número no mês (ex.: loja que não usa PP) fica fora dos totais.
+// Um registro por mês × loja, alimentado por planilha:
+//   necessarias = regra da conferência (planilha de itens)
+//   usadas      = sacolas institucionais que saíram nos pedidos, por tamanho (planilha de itens)
+//   estoque     = sacolas em estoque + trânsito, por tamanho (consulta de estoque)
+// Meta do mês seguinte (total da loja, segue a regra):
+//   média das necessárias nos últimos 3 meses × (1 + margem) [− estoque do mês, se enviado], nunca negativa
 
 export const TAMANHOS = [['pp', 'PP'], ['p', 'P'], ['m', 'M'], ['g', 'G']]
 export const JANELA_MESES = 3
@@ -39,6 +39,7 @@ export function idRegistro(mes, loja) {
 
 const chave = (mes, loja) => `${mes}|${loja}`
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+export const somaTamanhos = (obj) => (obj ? TAMANHOS.reduce((a, [k]) => a + (num(obj[k]) || 0), 0) : null)
 
 export function indexa(registros) {
   const map = new Map()
@@ -46,78 +47,51 @@ export function indexa(registros) {
   return map
 }
 
-// soma dos tamanhos usados; null se algum tamanho usado estiver sem valor (ou nenhum usado)
-function somaUsados(valores, usado) {
-  const ks = TAMANHOS.map(([k]) => k).filter((k) => usado[k])
-  if (ks.length === 0 || ks.some((k) => valores[k] === null)) return null
-  return ks.reduce((a, k) => a + valores[k], 0)
-}
+export const registroDe = (idx, mes, loja) => idx.get(chave(mes, loja)) || null
 
-// Visão calculada de uma loja num mês
-export function calculaMes(idx, mes, loja) {
-  const reg = idx.get(chave(mes, loja))
-  const ant = idx.get(chave(somaMes(mes, -1), loja))
-  const inicial = {}, inicialHerdado = {}, compradas = {}, sobra = {}, consumo = {}, usado = {}
-  for (const [k] of TAMANHOS) {
-    const herdado = num(ant?.sobra?.[k])
-    inicialHerdado[k] = herdado !== null
-    inicial[k] = herdado !== null ? herdado : num(reg?.inicial?.[k])
-    compradas[k] = num(reg?.compradas?.[k])
-    sobra[k] = num(reg?.sobra?.[k])
-    usado[k] = inicial[k] !== null || compradas[k] !== null || sobra[k] !== null
-    consumo[k] = inicial[k] !== null && sobra[k] !== null ? inicial[k] + (compradas[k] || 0) - sobra[k] : null
-  }
-  return {
-    existe: !!reg,
-    inicial, inicialHerdado, compradas, sobra, consumo, usado,
-    necessarias: num(reg?.necessarias),
-    total: {
-      inicial: somaUsados(inicial, usado),
-      compradas: TAMANHOS.reduce((a, [k]) => a + (compradas[k] || 0), 0),
-      sobra: somaUsados(sobra, usado),
-      consumo: somaUsados(consumo, usado),
-    },
-  }
-}
-
-// Meta de compra para o mês seguinte a `mes`, por tamanho.
-// motivo quando não dá para calcular: 'sem-sobra' | 'sem-consumo' | 'sem-dados' (tamanho não usado)
-export function metaProximoMes(idx, mes, loja, margemPct) {
-  const meses = Array.from({ length: JANELA_MESES }, (_, i) => calculaMes(idx, somaMes(mes, -i), loja))
-  const atual = meses[0]
-  const out = {}
-  for (const [k] of TAMANHOS) {
-    const consumos = meses.map((c) => c.consumo[k]).filter((c) => c !== null).map((c) => Math.max(0, c))
-    const sobra = atual.sobra[k]
-    if (!atual.usado[k] && consumos.length === 0) out[k] = { meta: null, motivo: 'sem-dados' }
-    else if (sobra === null) out[k] = { meta: null, motivo: 'sem-sobra' }
-    else if (consumos.length === 0) out[k] = { meta: null, motivo: 'sem-consumo' }
-    else {
-      const media = consumos.reduce((a, b) => a + b, 0) / consumos.length
-      // toFixed tira o ruído de ponto flutuante (200 × 1,1 = 220,00000000000003 → 220, não 221)
-      const alvo = Math.ceil(+(media * (1 + (margemPct || 0) / 100)).toFixed(6))
-      out[k] = { meta: Math.max(0, alvo - sobra), media, alvo, sobra, meses: consumos.length }
+// Agrupa a análise da conferência por loja canônica (soma se dois nomes caírem na mesma loja)
+export function agrupaAnalise(analise) {
+  const out = new Map()
+  for (const u of analise) {
+    const loja = canonLoja(u.unidade)
+    const atual = out.get(loja) || { loja, necessarias: 0, usadas: null }
+    atual.necessarias += u.necessarias
+    if (u.usadas) {
+      atual.usadas = atual.usadas || { pp: 0, p: 0, m: 0, g: 0 }
+      for (const [k] of TAMANHOS) atual.usadas[k] += u.usadas[k] || 0
     }
+    out.set(loja, atual)
   }
-  const calc = TAMANHOS.map(([k]) => out[k]).filter((v) => v.motivo !== 'sem-dados')
-  out.total = calc.length && calc.every((v) => v.meta !== null) ? calc.reduce((a, v) => a + v.meta, 0) : null
-  out.pendente = calc.some((v) => v.meta === null)
-  return out
+  return [...out.values()]
 }
 
-// Totais de um mês somando lojas (tabela de histórico). `parcial` = alguma loja lançada
-// ainda sem sobra/consumo completo; os valores somam só o que já dá para calcular.
+// Meta para o mês seguinte a `mes` (total, sem separar tamanho — a regra vale para qualquer
+// sacola): média das necessárias pela regra nos últimos 3 meses × (1 + margem). O estoque é
+// opcional: com a consulta de estoque, desconta o total de sacolas que a loja já tem.
+// meta null quando não há planilha de itens nos últimos 3 meses.
+export function metaProximoMes(idx, mes, loja, margemPct) {
+  const comRegra = Array.from({ length: JANELA_MESES }, (_, i) => registroDe(idx, somaMes(mes, -i), loja)).filter((r) => num(r?.necessarias) !== null)
+  const estoqueReg = registroDe(idx, mes, loja)?.estoque || null
+  const base = { meses: comRegra.length, comEstoque: !!estoqueReg }
+  if (comRegra.length === 0) return { ...base, meta: null }
+  const media = comRegra.reduce((a, r) => a + r.necessarias, 0) / comRegra.length
+  // toFixed tira o ruído de ponto flutuante (200 × 1,1 = 220,00000000000003 → 220, não 221)
+  const alvo = Math.ceil(+(media * (1 + (margemPct || 0) / 100)).toFixed(6))
+  const estoque = estoqueReg ? somaTamanhos(estoqueReg) : 0
+  return { ...base, media, alvo, estoque, meta: Math.max(0, alvo - estoque) }
+}
+
+// Totais de um mês somando lojas (tabela mês a mês); null onde nenhuma loja tem o dado
 export function totaisDoMes(idx, mes, lojas) {
-  const r = { compradas: 0, sobra: 0, consumo: 0, necessarias: null, parcial: false, lojas: 0 }
-  for (const loja of lojas) {
-    const c = calculaMes(idx, mes, loja)
-    if (!c.existe) continue
-    r.lojas++
-    r.compradas += c.total.compradas
-    if (c.total.sobra === null || c.total.consumo === null) r.parcial = true
-    r.sobra += c.total.sobra || 0
-    r.consumo += c.total.consumo || 0
-    if (c.necessarias !== null) r.necessarias = (r.necessarias || 0) + c.necessarias
+  const soma = (vals) => (vals.some((v) => v !== null) ? vals.reduce((a, v) => a + (v || 0), 0) : null)
+  const regs = lojas.map((l) => registroDe(idx, mes, l)).filter(Boolean)
+  if (regs.length === 0) return null
+  // usadas − regra só nas lojas que têm os dois (presencial não traz sacolas usadas)
+  const ambos = regs.filter((r) => r.usadas && num(r.necessarias) !== null)
+  return {
+    necessarias: soma(regs.map((r) => num(r.necessarias))),
+    usadas: soma(regs.map((r) => somaTamanhos(r.usadas))),
+    estoque: soma(regs.map((r) => somaTamanhos(r.estoque))),
+    difRegra: ambos.length ? ambos.reduce((a, r) => a + somaTamanhos(r.usadas) - r.necessarias, 0) : null,
   }
-  return r.lojas ? r : null
 }

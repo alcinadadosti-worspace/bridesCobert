@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { History, ChevronLeft, ChevronRight, LogOut, Store, ShoppingCart, Trash2, Plus, Save, AlertCircle, CheckCircle2, ClipboardCheck, Lock } from 'lucide-react'
+import { History, ChevronLeft, ChevronRight, LogOut, Store, ShoppingCart, Trash2, AlertCircle, CheckCircle2, ClipboardCheck, Lock, FileSpreadsheet } from 'lucide-react'
 import { observarUsuario, usuarioDe, entrar, sair, observarRegistros, salvarRegistros, excluirRegistro } from '../lib/sacolasCloud'
-import { STORE_NAMES } from '../utils/parseSpreadsheet'
+import { parseSacolasFile, analisaSacolas, parseEstoqueSacolasFile } from '../utils/parseSpreadsheet'
+import { useFileDrop } from '../hooks/useFileDrop'
 import {
-  TAMANHOS, JANELA_MESES, mesAtual, somaMes, nomeMes, canonLoja, idRegistro,
-  indexa, calculaMes, metaProximoMes, totaisDoMes,
+  TAMANHOS, JANELA_MESES, mesAtual, somaMes, nomeMes, idRegistro,
+  indexa, registroDe, agrupaAnalise, metaProximoMes, totaisDoMes, somaTamanhos,
 } from '../utils/sacolasHistorico'
 
-const CAMPOS = ['inicial', 'compradas', 'sobra']
 const chave = (mes, loja) => `${mes}|${loja}`
 const fmt = (v) => (v === null || v === undefined ? '—' : v.toLocaleString('pt-BR'))
 const limpa = (v) => v.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '')
-const paraNum = (mapa) => Object.fromEntries(TAMANHOS.map(([k]) => [k, mapa?.[k] === '' || mapa?.[k] == null ? null : parseInt(mapa[k], 10)]))
-const paraTexto = (mapa) => Object.fromEntries(TAMANHOS.map(([k]) => [k, mapa?.[k] == null ? '' : String(mapa[k])]))
-const rascunhoDe = (reg) => Object.fromEntries(CAMPOS.map((c) => [c, paraTexto(reg?.[c])]))
-const mesmoValor = (rasc, reg) => CAMPOS.every((c) => TAMANHOS.every(([k]) => paraNum(rasc[c])[k] === (reg?.[c]?.[k] ?? null)))
 
 const MARGEM_KEY = 'sacolas.margem'
 function lerMargem() {
@@ -54,8 +50,8 @@ function TelaLogin({ onEntrar, erro, entrando }) {
         <h3 className="text-lg font-semibold text-white">Histórico de sacolas</h3>
       </div>
       <p className="text-sm text-gray-400 mb-5">
-        Compras e sobras de cada mês ficam salvas na nuvem, por loja e tamanho. Com elas o app calcula
-        quanto foi consumido e quanto comprar no mês seguinte.
+        A planilha de itens de cada mês fica salva na nuvem. Com ela o app guarda a regra e as sacolas
+        usadas por loja, e calcula de quantas sacolas cada loja vai precisar no mês seguinte.
       </p>
       <form onSubmit={enviar} className="space-y-3">
         <label className="block">
@@ -102,92 +98,46 @@ function TelaSemAcesso({ usuario, onSair }) {
   )
 }
 
-// ---------- lançamento por loja ----------
-function Celula({ valor, onChange, label }) {
+// ---------- envio das planilhas do mês ----------
+function EnvioPlanilha({ titulo, ajuda, arquivo, onArquivo, ocupado }) {
+  const ref = useRef(null)
+  const { isDragging, error, clearError, handlers, handleFileInput } = useFileDrop(onArquivo)
   return (
-    <input
-      type="text"
-      inputMode="numeric"
-      aria-label={label}
-      value={valor}
-      onChange={(e) => onChange(limpa(e.target.value))}
-      placeholder="—"
-      className="w-full min-w-0 px-1 py-1.5 text-center text-sm text-white bg-[#0f1a14] border border-white/10 rounded-lg
-        placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
-    />
-  )
-}
-
-function CartaoLoja({ loja, mes, calc, valores, onSet, onExcluir, podeExcluir }) {
-  const mesAnt = nomeMes(somaMes(mes, -1))
-  const linha = 'grid grid-cols-[4.75rem_repeat(5,minmax(0,1fr))] gap-1.5 items-center'
-  const consumoTotal = calc.total.consumo
-  const difRegra = consumoTotal !== null && calc.necessarias !== null ? consumoTotal - calc.necessarias : null
-
-  return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <Store className="w-4 h-4 text-gold-400 shrink-0" />
-          <span className="text-white font-semibold truncate">{loja}</span>
-        </div>
-        {podeExcluir && (
-          <button onClick={onExcluir} title={`Apagar o lançamento de ${nomeMes(mes)} desta loja`} className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-white/5 transition-colors">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      <div className={`${linha} mb-1.5`}>
-        <span />
-        {TAMANHOS.map(([k, l]) => <span key={k} className="text-[11px] text-gray-500 text-center">{l}</span>)}
-        <span className="text-[11px] text-gray-500 text-center">Total</span>
-      </div>
-
-      {/* início do mês: herda a sobra do mês anterior; sem ela, digita */}
-      <div className={`${linha} mb-1.5`}>
-        <span className="text-xs text-gray-400 leading-tight">Início do mês</span>
-        {TAMANHOS.map(([k, l]) => calc.inicialHerdado[k] ? (
-          <span key={k} className="text-sm text-gray-300 text-center tabular-nums" title={`Sobra do fim de ${mesAnt}`}>{fmt(calc.inicial[k])}</span>
-        ) : (
-          <Celula key={k} label={`Início do mês ${l}`} valor={valores.inicial[k]} onChange={(v) => onSet('inicial', k, v)} />
-        ))}
-        <span className="text-sm text-gray-400 text-center tabular-nums">{fmt(calc.total.inicial)}</span>
-      </div>
-
-      <div className={`${linha} mb-1.5`}>
-        <span className="text-xs text-gray-400 leading-tight">Compradas</span>
-        {TAMANHOS.map(([k, l]) => <Celula key={k} label={`Compradas ${l}`} valor={valores.compradas[k]} onChange={(v) => onSet('compradas', k, v)} />)}
-        <span className="text-sm text-gray-400 text-center tabular-nums">{fmt(calc.total.compradas)}</span>
-      </div>
-
-      <div className={`${linha} mb-3`}>
-        <span className="text-xs text-gray-400 leading-tight">Sobra no fim</span>
-        {TAMANHOS.map(([k, l]) => <Celula key={k} label={`Sobra no fim ${l}`} valor={valores.sobra[k]} onChange={(v) => onSet('sobra', k, v)} />)}
-        <span className="text-sm text-gray-400 text-center tabular-nums">{fmt(calc.total.sobra)}</span>
-      </div>
-
-      <div className={`${linha} pt-3 border-t border-white/10`}>
-        <span className="text-xs font-medium text-white">Consumo</span>
-        {TAMANHOS.map(([k]) => {
-          const c = calc.consumo[k]
-          return (
-            <span key={k} className={`text-sm font-semibold text-center tabular-nums ${c !== null && c < 0 ? 'text-red-400' : 'text-white'}`} title={c !== null && c < 0 ? 'Consumo negativo: confira os números' : undefined}>
-              {fmt(c)}
-            </span>
-          )
-        })}
-        <span className="text-sm font-semibold text-gold-300 text-center tabular-nums">{fmt(consumoTotal)}</span>
-      </div>
-
-      {calc.necessarias !== null && (
-        <p className="mt-3 text-xs text-gray-500">
-          Regra da conferência: <b className="text-gray-300">{fmt(calc.necessarias)}</b> sacolas
-          {difRegra !== null && (
-            <span className={difRegra === 0 ? 'text-emerald-400' : difRegra > 0 ? 'text-amber-400' : 'text-red-400'}>
-              {' · '}{difRegra === 0 ? 'consumo bateu com a regra' : difRegra > 0 ? `consumo ${fmt(difRegra)} acima da regra` : `consumo ${fmt(-difRegra)} abaixo da regra`}
-            </span>
+    <div
+      {...handlers}
+      className={`p-4 rounded-xl border transition-colors ${isDragging ? 'border-primary-500/60 bg-primary-500/10' : 'bg-white/5 border-white/10'}`}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <FileSpreadsheet className="w-5 h-5 text-primary-400 shrink-0" />
+        <div className="flex-1 min-w-[180px]">
+          <p className="text-sm font-medium text-white">{titulo}</p>
+          {arquivo ? (
+            <p className="flex items-center gap-1 text-xs text-emerald-400 min-w-0">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate" title={arquivo}>{arquivo}</span>
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500">{ajuda}</p>
           )}
+        </div>
+        <button
+          onClick={() => ref.current?.click()}
+          disabled={ocupado}
+          className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-sm text-white hover:bg-white/15 transition-colors disabled:opacity-60"
+        >
+          {ocupado ? 'Lendo…' : arquivo ? 'Trocar planilha' : 'Subir planilha'}
+        </button>
+        <input
+          ref={ref}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          onChange={(e) => { handleFileInput(e); e.target.value = '' }} // permite reenviar o mesmo arquivo
+          className="hidden"
+        />
+      </div>
+      {error && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-red-300">
+          <AlertCircle className="w-3.5 h-3.5" /> {error}
+          <button onClick={clearError} className="ml-1 text-red-400">&times;</button>
         </p>
       )}
     </div>
@@ -195,28 +145,23 @@ function CartaoLoja({ loja, mes, calc, valores, onSet, onExcluir, podeExcluir })
 }
 
 // ---------- meta do mês seguinte ----------
-const MOTIVO = { 'sem-sobra': 'falta a sobra do fim do mês', 'sem-consumo': 'ainda sem consumo calculado' }
-
-function TabelaMeta({ lojas, idx, mes, margem, setMargem }) {
+function TabelaMeta({ lojas, idx, mes, margem, setMargem, temEstoque }) {
   const prox = nomeMes(somaMes(mes, 1))
-  const linhas = lojas.map((loja) => ({ loja, meta: metaProximoMes(idx, mes, loja, margem) }))
-  const totalTam = Object.fromEntries(TAMANHOS.map(([k]) => {
-    const vals = linhas.map((l) => l.meta[k].meta).filter((v) => v !== null)
-    return [k, vals.length ? vals.reduce((a, v) => a + v, 0) : null]
-  }))
-  const total = linhas.reduce((a, l) => a + (l.meta.total || 0), 0)
-  const pendentes = linhas.filter((l) => l.meta.pendente)
-  const temAlguma = linhas.some((l) => TAMANHOS.some(([k]) => l.meta[k].meta !== null))
-  const dica = (m) => m.meta === null
-    ? MOTIVO[m.motivo]
-    : `Média de ${m.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}/mês (${m.meses} ${m.meses === 1 ? 'mês' : 'meses'}) + ${margem}% = ${m.alvo} − sobra ${m.sobra}`
+  const linhas = lojas.map((loja) => ({ loja, m: metaProximoMes(idx, mes, loja, margem) }))
+  const soma = (campo) => {
+    const vals = linhas.map((l) => l.m[campo]).filter((v) => v !== null && v !== undefined)
+    return vals.length ? vals.reduce((a, v) => a + v, 0) : null
+  }
+  const inteiro = (v) => (v === null || v === undefined ? '—' : Math.round(v).toLocaleString('pt-BR'))
+  const dica = (m) => `Média de ${m.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} sacolas/mês pela regra (${m.meses} ${m.meses === 1 ? 'mês' : 'meses'}) + ${margem}% = ${fmt(m.alvo)}`
+    + (m.comEstoque ? ` − estoque ${fmt(m.estoque)}` : '')
 
   return (
     <div className="glass rounded-2xl p-6 ring-1 ring-gold-500/20">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-1">
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-5 h-5 text-gold-400" />
-          <h4 className="text-base font-semibold text-white">Comprar em {prox}</h4>
+          <h4 className="text-base font-semibold text-white">{temEstoque ? `Comprar para ${prox}` : `Sacolas para ${prox}`}</h4>
         </div>
         <label className="flex items-center gap-2 text-xs text-gray-400">
           Margem de segurança
@@ -231,33 +176,36 @@ function TabelaMeta({ lojas, idx, mes, margem, setMargem }) {
         </label>
       </div>
       <p className="text-xs text-gray-500 mb-5">
-        Média do consumo dos últimos {JANELA_MESES} meses + margem, menos a sobra do fim de {nomeMes(mes)}. Passe o mouse num número para ver a conta.
+        Pela regra da conferência (3 itens = 1 sacola · kit/combo/estojo = 1 · suporte à venda não conta), qualquer tamanho:
+        média dos últimos {JANELA_MESES} meses + margem{temEstoque ? `, menos o estoque de sacolas de ${nomeMes(mes)}` : ''}.
       </p>
 
-      {!temAlguma ? (
-        <p className="text-sm text-gray-400">
-          Para calcular, lance nos cartões abaixo as compras e a sobra do fim de {nomeMes(mes)} (no primeiro mês, também o estoque do início).
-        </p>
+      {linhas.length === 0 ? (
+        <p className="text-sm text-gray-400">Suba a planilha de itens de um mês para começar.</p>
       ) : (
         <div className="overflow-x-auto -mx-1 px-1">
-          <table className="w-full text-sm min-w-[420px]">
+          <table className="w-full text-sm min-w-[360px]">
             <thead>
               <tr className="text-[11px] text-gray-500 uppercase tracking-wide">
                 <th className="text-left font-medium pb-2">Loja</th>
-                {TAMANHOS.map(([k, l]) => <th key={k} className="text-right font-medium pb-2 w-14">{l}</th>)}
-                <th className="text-right font-medium pb-2 w-16">Total</th>
+                <th className="text-right font-medium pb-2" title={`Média das necessárias pela regra nos últimos ${JANELA_MESES} meses`}>Média/mês</th>
+                <th className="text-right font-medium pb-2">+ {margem}%</th>
+                {temEstoque && <th className="text-right font-medium pb-2">− Estoque</th>}
+                <th className="text-right font-medium pb-2">{temEstoque ? 'Comprar' : 'Sacolas'}</th>
               </tr>
             </thead>
             <tbody>
-              {linhas.map(({ loja, meta }) => (
-                <tr key={loja} className="border-t border-white/5">
-                  <td className="py-2 text-gray-300 truncate max-w-[180px]">{loja}</td>
-                  {TAMANHOS.map(([k]) => (
-                    <td key={k} className={`py-2 text-right tabular-nums ${meta[k].meta === null ? 'text-gray-600' : 'text-white'}`} title={meta[k].motivo === 'sem-dados' ? undefined : dica(meta[k])}>
-                      {fmt(meta[k].meta)}
-                    </td>
-                  ))}
-                  <td className="py-2 text-right tabular-nums font-semibold text-gold-300">{fmt(meta.total)}</td>
+              {linhas.map(({ loja, m }) => (
+                <tr key={loja} className="border-t border-white/5" title={m.meta === null ? undefined : dica(m)}>
+                  <td className="py-2 text-gray-300 max-w-[220px]">
+                    <div className="truncate">{loja}</div>
+                    {m.meta === null && <div className="text-[11px] text-amber-400/90">sem planilha de itens nos últimos {JANELA_MESES} meses</div>}
+                    {m.meta !== null && temEstoque && !m.comEstoque && <div className="text-[11px] text-gray-500">não está na consulta de estoque</div>}
+                  </td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{inteiro(m.media)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(m.alvo)}</td>
+                  {temEstoque && <td className="py-2 text-right tabular-nums text-gray-300">{m.comEstoque ? fmt(m.estoque) : '—'}</td>}
+                  <td className="py-2 text-right tabular-nums font-semibold text-gold-300">{fmt(m.meta)}</td>
                 </tr>
               ))}
             </tbody>
@@ -265,19 +213,70 @@ function TabelaMeta({ lojas, idx, mes, margem, setMargem }) {
               <tfoot>
                 <tr className="border-t border-white/15">
                   <td className="pt-2 text-gray-400 text-xs uppercase tracking-wide">Total</td>
-                  {TAMANHOS.map(([k]) => <td key={k} className="pt-2 text-right tabular-nums text-gray-200">{fmt(totalTam[k])}</td>)}
-                  <td className="pt-2 text-right tabular-nums font-bold text-gold-300">{fmt(total)}</td>
+                  <td className="pt-2 text-right tabular-nums text-gray-200">{inteiro(soma('media'))}</td>
+                  <td className="pt-2 text-right tabular-nums text-gray-200">{fmt(soma('alvo'))}</td>
+                  {temEstoque && <td className="pt-2 text-right tabular-nums text-gray-200">{fmt(soma('estoque'))}</td>}
+                  <td className="pt-2 text-right tabular-nums font-bold text-gold-300">{fmt(soma('meta'))}</td>
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       )}
+    </div>
+  )
+}
 
-      {temAlguma && pendentes.length > 0 && (
-        <p className="mt-4 text-xs text-amber-400/90">
-          Incompleto em: {pendentes.map((l) => l.loja).join(', ')}. Falta a sobra do fim de {nomeMes(mes)} (ou o início do mês) em algum tamanho. O total soma só o que já dá para calcular.
-        </p>
+// ---------- dados do mês por loja ----------
+function CartaoLoja({ loja, mes, reg, onExcluir }) {
+  const usadasTotal = somaTamanhos(reg?.usadas)
+  const nec = reg?.necessarias ?? null
+  const dif = usadasTotal !== null && nec !== null ? usadasTotal - nec : null
+  const porTamanho = (obj) => TAMANHOS.map(([k, l]) => `${l} ${fmt(obj[k])}`).join(' · ')
+
+  return (
+    <div className="glass rounded-2xl p-5">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Store className="w-4 h-4 text-gold-400 shrink-0" />
+          <span className="text-white font-semibold truncate">{loja}</span>
+        </div>
+        {reg && (
+          <button onClick={onExcluir} title={`Apagar os dados de ${nomeMes(mes)} desta loja`} className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-white/5 transition-colors">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {!reg ? (
+        <p className="text-sm text-gray-500">Sem dados em {nomeMes(mes)}.</p>
+      ) : (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-baseline text-sm">
+          <dt className="text-xs text-gray-400">Pela regra</dt>
+          <dd className="text-white font-semibold tabular-nums">{fmt(nec)} <span className="text-xs font-normal text-gray-500">sacolas necessárias</span></dd>
+          <dt className="text-xs text-gray-400">Nos pedidos</dt>
+          <dd className="tabular-nums text-gray-200">
+            {reg.usadas ? (
+              <>
+                {fmt(usadasTotal)} <span className="text-xs text-gray-500">({porTamanho(reg.usadas)})</span>
+                {dif !== null && dif !== 0 && (
+                  <span className={`block text-xs ${dif > 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {dif > 0 ? `${fmt(dif)} acima da regra` : `${fmt(-dif)} abaixo da regra`}
+                  </span>
+                )}
+                {dif === 0 && <span className="block text-xs text-emerald-400">bateu com a regra</span>}
+              </>
+            ) : (
+              <span className="text-xs text-gray-600">a planilha não traz as sacolas usadas</span>
+            )}
+          </dd>
+          {reg.estoque && (
+            <>
+              <dt className="text-xs text-gray-400">Estoque</dt>
+              <dd className="tabular-nums text-gray-200">{fmt(somaTamanhos(reg.estoque))} <span className="text-xs text-gray-500">({porTamanho(reg.estoque)})</span></dd>
+            </>
+          )}
+        </dl>
       )}
     </div>
   )
@@ -288,6 +287,7 @@ function TabelaHistorico({ meses, lojas, idx, mesSel, onSelecionar }) {
   const [filtro, setFiltro] = useState('')
   const lojasFiltro = filtro ? [filtro] : lojas
   const linhas = meses.map((m) => ({ mes: m, t: totaisDoMes(idx, m, lojasFiltro) })).filter((l) => l.t)
+  const temEstoque = linhas.some((l) => l.t.estoque !== null) // estoque é opcional
 
   return (
     <div className="glass rounded-2xl p-6">
@@ -307,48 +307,37 @@ function TabelaHistorico({ meses, lojas, idx, mesSel, onSelecionar }) {
       </div>
 
       {linhas.length === 0 ? (
-        <p className="text-sm text-gray-400">Nenhum mês lançado ainda.</p>
+        <p className="text-sm text-gray-400">Nenhum mês enviado ainda.</p>
       ) : (
         <div className="overflow-x-auto -mx-1 px-1">
-          <table className="w-full text-sm min-w-[520px]">
+          <table className="w-full text-sm min-w-[480px]">
             <thead>
               <tr className="text-[11px] text-gray-500 uppercase tracking-wide">
                 <th className="text-left font-medium pb-2">Mês</th>
-                <th className="text-right font-medium pb-2">Compradas</th>
-                <th className="text-right font-medium pb-2">Consumo</th>
-                <th className="text-right font-medium pb-2">Sobra no fim</th>
                 <th className="text-right font-medium pb-2" title="Sacolas necessárias pela regra da conferência">Regra</th>
+                <th className="text-right font-medium pb-2">Usadas</th>
+                <th className="text-right font-medium pb-2" title="Usadas − regra, nas lojas que têm os dois">Usadas − regra</th>
+                {temEstoque && <th className="text-right font-medium pb-2">Estoque</th>}
               </tr>
             </thead>
             <tbody>
-              {linhas.map(({ mes, t }) => {
-                const dif = !t.parcial && t.necessarias !== null ? t.consumo - t.necessarias : null
-                return (
-                  <tr
-                    key={mes}
-                    onClick={() => onSelecionar(mes)}
-                    className={`border-t border-white/5 cursor-pointer hover:bg-white/[0.03] ${mes === mesSel ? 'bg-primary-500/10' : ''}`}
-                  >
-                    <td className="py-2 text-gray-200">{nomeMes(mes)}</td>
-                    <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.compradas)}</td>
-                    <td className="py-2 text-right tabular-nums text-white font-medium">
-                      {fmt(t.consumo)}{t.parcial && <span className="text-amber-400" title="Algum lançamento ainda sem sobra do fim do mês">*</span>}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.sobra)}{t.parcial && <span className="text-amber-400">*</span>}</td>
-                    <td className="py-2 text-right tabular-nums text-gray-400">
-                      {fmt(t.necessarias)}
-                      {dif !== null && dif !== 0 && (
-                        <span className={`ml-1.5 text-xs ${dif > 0 ? 'text-amber-400' : 'text-red-400'}`}>({dif > 0 ? '+' : ''}{fmt(dif)})</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
+              {linhas.map(({ mes, t }) => (
+                <tr
+                  key={mes}
+                  onClick={() => onSelecionar(mes)}
+                  className={`border-t border-white/5 cursor-pointer hover:bg-white/[0.03] ${mes === mesSel ? 'bg-primary-500/10' : ''}`}
+                >
+                  <td className="py-2 text-gray-200">{nomeMes(mes)}</td>
+                  <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.necessarias)}</td>
+                  <td className="py-2 text-right tabular-nums text-white font-medium">{fmt(t.usadas)}</td>
+                  <td className={`py-2 text-right tabular-nums ${t.difRegra === null ? 'text-gray-600' : t.difRegra === 0 ? 'text-emerald-400' : t.difRegra > 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {t.difRegra === null ? '—' : `${t.difRegra > 0 ? '+' : ''}${fmt(t.difRegra)}`}
+                  </td>
+                  {temEstoque && <td className="py-2 text-right tabular-nums text-gray-300">{fmt(t.estoque)}</td>}
+                </tr>
+              ))}
             </tbody>
           </table>
-          {linhas.some((l) => l.t.parcial) && (
-            <p className="mt-3 text-xs text-gray-500"><span className="text-amber-400">*</span> mês com loja ainda sem sobra do fim lançada: soma só o que já dá para calcular.</p>
-          )}
         </div>
       )}
     </div>
@@ -364,10 +353,8 @@ function SacolasHistorico({ conferencia }) {
   const [erroDados, setErroDados] = useState(null)
   const [mes, setMes] = useState(mesAtual())
   const mesEscolhido = useRef(false)
-  const [rascunhos, setRascunhos] = useState({})
-  const [lojasExtras, setLojasExtras] = useState([])
   const [margem, setMargemState] = useState(lerMargem)
-  const [salvando, setSalvando] = useState(false)
+  const [ocupado, setOcupado] = useState(null) // 'itens' | 'estoque' | 'conferencia'
   const [aviso, setAviso] = useState(null) // { tipo: 'ok' | 'erro', texto }
   const avisoTimer = useRef(null)
 
@@ -381,8 +368,7 @@ function SacolasHistorico({ conferencia }) {
     )
   }, [user])
 
-  // abre no mês mais recente com lançamento (até o mês atual) — no começo do mês
-  // isso mostra o mês que acabou, onde se lança a sobra e sai a meta do mês novo
+  // abre no mês mais recente com dados (até o mês atual)
   useEffect(() => {
     if (!registros || mesEscolhido.current) return
     mesEscolhido.current = true
@@ -397,40 +383,25 @@ function SacolasHistorico({ conferencia }) {
   }
 
   const porChave = useMemo(() => new Map((registros || []).map((r) => [chave(r.mes, r.loja), r])), [registros])
+  const idx = useMemo(() => indexa(registros || []), [registros])
 
-  const sujos = useMemo(
-    () => Object.keys(rascunhos).filter((key) => !mesmoValor(rascunhos[key], porChave.get(key))),
-    [rascunhos, porChave],
-  )
-
-  useEffect(() => {
-    if (sujos.length === 0) return
-    const avisa = (e) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', avisa)
-    return () => window.removeEventListener('beforeunload', avisa)
-  }, [sujos.length])
-
-  // registros da nuvem + o que está sendo digitado (para a meta mudar ao vivo)
-  const idx = useMemo(() => {
-    const map = new Map(porChave)
-    for (const [key, r] of Object.entries(rascunhos)) {
-      const [m, loja] = key.split('|')
-      map.set(key, { ...(map.get(key) || { mes: m, loja }), inicial: paraNum(r.inicial), compradas: paraNum(r.compradas), sobra: paraNum(r.sobra) })
-    }
-    return indexa([...map.values()])
-  }, [porChave, rascunhos])
-
+  // lojas que têm planilha de itens em algum mês (a consulta de estoque traz todas as lojas;
+  // as que nunca tiveram itens ficam guardadas, mas não aparecem)
   const lojas = useMemo(() => {
-    const s = new Set([...(registros || []).map((r) => r.loja), ...lojasExtras])
+    const s = new Set((registros || []).filter((r) => r.necessarias != null || r.usadas).map((r) => r.loja))
     return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [registros, lojasExtras])
+  }, [registros])
 
   const meses = useMemo(() => [...new Set((registros || []).map((r) => r.mes))].sort().reverse(), [registros])
+  const doMes = (registros || []).filter((r) => r.mes === mes)
+  const arquivoItens = doMes.find((r) => r.arquivoItens)?.arquivoItens || null
+  const arquivoEstoque = doMes.find((r) => r.arquivoEstoque)?.arquivoEstoque || null
 
-  const lojasParaAdicionar = useMemo(() => {
-    const daConf = (conferencia?.analise || []).map((u) => canonLoja(u.unidade))
-    return [...new Set([...daConf, ...Object.values(STORE_NAMES)])].filter((l) => !lojas.includes(l))
-  }, [conferencia, lojas])
+  const avisar = (tipo, texto) => {
+    setAviso({ tipo, texto })
+    clearTimeout(avisoTimer.current)
+    avisoTimer.current = setTimeout(() => setAviso(null), 5000)
+  }
 
   const handleEntrar = async (usuario, senha) => {
     setErroLogin('')
@@ -449,73 +420,83 @@ function SacolasHistorico({ conferencia }) {
   }
 
   const handleSair = () => {
-    if (sujos.length && !window.confirm('Há alterações não salvas. Sair mesmo assim?')) return
-    setRascunhos({})
     mesEscolhido.current = false
     sair()
   }
 
-  const setCampo = (loja, campo, k, valor) => {
-    const key = chave(mes, loja)
-    setRascunhos((prev) => {
-      const atual = prev[key] || rascunhoDe(porChave.get(key))
-      return { ...prev, [key]: { ...atual, [campo]: { ...atual[campo], [k]: valor } } }
-    })
+  // grava os dados de uma planilha no mês selecionado; lojas que estavam no envio anterior
+  // e não vieram no novo têm esses campos limpos (para não sobrar dado de outra planilha)
+  const gravarNoMes = async (porLoja, campos, limpar) => {
+    const lista = porLoja.map(({ loja, dados }) => ({
+      id: porChave.get(chave(mes, loja))?.id || idRegistro(mes, loja),
+      dados: { mes, loja, ...dados },
+    }))
+    const novas = new Set(porLoja.map((p) => p.loja))
+    for (const r of doMes) {
+      if (!novas.has(r.loja) && campos.some((c) => r[c] != null)) lista.push({ id: r.id, dados: limpar })
+    }
+    await salvarRegistros(lista, usuarioDe(user))
   }
 
-  const avisar = (tipo, texto) => {
-    setAviso({ tipo, texto })
-    clearTimeout(avisoTimer.current)
-    avisoTimer.current = setTimeout(() => setAviso(null), 4000)
+  const salvarItens = async (analise, arquivo) => {
+    if (arquivoItens && !window.confirm(`${nomeMes(mes)} já tem a planilha de itens "${arquivoItens}". Substituir por "${arquivo}"?`)) return false
+    const grupos = agrupaAnalise(analise)
+    await gravarNoMes(
+      grupos.map((g) => ({ loja: g.loja, dados: { necessarias: g.necessarias, usadas: g.usadas, arquivoItens: arquivo } })),
+      ['necessarias', 'usadas', 'arquivoItens'],
+      { necessarias: null, usadas: null, arquivoItens: null },
+    )
+    return true
   }
 
-  const salvar = async () => {
-    setSalvando(true)
+  const enviarItens = async (file) => {
+    setOcupado('itens')
     try {
-      const lista = sujos.map((key) => {
-        const [m, loja] = key.split('|')
-        const r = rascunhos[key]
-        return {
-          id: porChave.get(key)?.id || idRegistro(m, loja),
-          dados: { mes: m, loja, inicial: paraNum(r.inicial), compradas: paraNum(r.compradas), sobra: paraNum(r.sobra) },
-        }
-      })
-      await salvarRegistros(lista, usuarioDe(user))
-      setRascunhos({})
-      avisar('ok', 'Salvo.')
+      const analise = analisaSacolas(await parseSacolasFile(file))
+      if (await salvarItens(analise, file.name)) avisar('ok', `Planilha de itens salva em ${nomeMes(mes)}.`)
+    } catch (e) {
+      avisar('erro', e.message)
+    } finally {
+      setOcupado(null)
+    }
+  }
+
+  const enviarEstoque = async (file) => {
+    setOcupado('estoque')
+    try {
+      const est = await parseEstoqueSacolasFile(file)
+      if (arquivoEstoque && !window.confirm(`${nomeMes(mes)} já tem a consulta de estoque "${arquivoEstoque}". Substituir por "${file.name}"?`)) return
+      await gravarNoMes(
+        Object.entries(est).map(([loja, estoque]) => ({ loja, dados: { estoque, arquivoEstoque: file.name } })),
+        ['estoque', 'arquivoEstoque'],
+        { estoque: null, arquivoEstoque: null },
+      )
+      avisar('ok', `Estoque de sacolas salvo em ${nomeMes(mes)}.`)
+    } catch (e) {
+      avisar('erro', e.message)
+    } finally {
+      setOcupado(null)
+    }
+  }
+
+  const usarConferencia = async () => {
+    setOcupado('conferencia')
+    try {
+      if (await salvarItens(conferencia.analise, conferencia.fileName)) avisar('ok', `Planilha da conferência salva em ${nomeMes(mes)}.`)
     } catch (e) {
       avisar('erro', `Não salvou: ${e.code || e.message}`)
     } finally {
-      setSalvando(false)
+      setOcupado(null)
     }
   }
 
   const excluir = async (loja) => {
     const reg = porChave.get(chave(mes, loja))
-    if (!reg || !window.confirm(`Apagar o lançamento de ${loja} em ${nomeMes(mes)}?`)) return
+    if (!reg || !window.confirm(`Apagar os dados de ${loja} em ${nomeMes(mes)}?`)) return
     try {
       await excluirRegistro(reg.id)
-      setRascunhos((prev) => { const n = { ...prev }; delete n[chave(mes, loja)]; return n })
     } catch (e) {
       avisar('erro', `Não apagou: ${e.code || e.message}`)
-    }
-  }
-
-  // necessárias da conferência carregada → regra do mês selecionado
-  const confLojas = (conferencia?.analise || []).map((u) => ({ loja: canonLoja(u.unidade), necessarias: u.necessarias }))
-  const confJaGuardada = confLojas.length > 0 && confLojas.every((c) => porChave.get(chave(mes, c.loja))?.necessarias === c.necessarias)
-  const guardarConferencia = async () => {
-    try {
-      await salvarRegistros(
-        confLojas.map((c) => ({
-          id: porChave.get(chave(mes, c.loja))?.id || idRegistro(mes, c.loja),
-          dados: { mes, loja: c.loja, necessarias: c.necessarias },
-        })),
-        usuarioDe(user),
-      )
-      avisar('ok', `Regra guardada em ${nomeMes(mes)}.`)
-    } catch (e) {
-      avisar('erro', `Não guardou: ${e.code || e.message}`)
     }
   }
 
@@ -533,14 +514,11 @@ function SacolasHistorico({ conferencia }) {
   }
   if (!registros) return <p className="text-sm text-gray-500">Carregando histórico…</p>
 
-  const calcs = lojas.map((loja) => ({ loja, calc: calculaMes(idx, mes, loja) }))
-  const totalMes = (campo) => {
-    const vals = calcs.map((c) => c.calc.total[campo])
-    return vals.some((v) => v !== null) ? vals.reduce((a, v) => a + (v || 0), 0) : null
-  }
+  const totais = totaisDoMes(idx, mes, lojas)
+  const confNoMes = conferencia && arquivoItens === conferencia.fileName
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-16">
       {/* Cabeçalho: mês + conta */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -564,103 +542,79 @@ function SacolasHistorico({ conferencia }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mt-5">
-          {[['Compradas', totalMes('compradas')], ['Consumo', totalMes('consumo')], ['Sobra no fim', totalMes('sobra')]].map(([l, v]) => (
+        <div className={`grid gap-3 mt-5 ${arquivoEstoque ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {[['Regra (necessárias)', totais?.necessarias], ['Usadas', totais?.usadas], ...(arquivoEstoque ? [['Estoque', totais?.estoque]] : [])].map(([l, v]) => (
             <div key={l} className="p-3 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-xl font-bold text-white tabular-nums">{fmt(v)}</span>
+              <span className="text-xl font-bold text-white tabular-nums">{fmt(v ?? null)}</span>
               <p className="text-xs text-gray-400">{l}</p>
             </div>
           ))}
         </div>
       </motion.div>
 
-      {/* Regra vinda da conferência */}
-      {confLojas.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
-          <ClipboardCheck className="w-4 h-4 text-gold-400 shrink-0" />
-          <span className="text-sm text-gray-300 flex-1 min-w-[220px]">
-            Conferência carregada{conferencia.fileName ? ` (${conferencia.fileName})` : ''}:{' '}
-            <b className="text-white">{fmt(confLojas.reduce((a, c) => a + c.necessarias, 0))}</b> sacolas necessárias em {confLojas.length} {confLojas.length === 1 ? 'loja' : 'lojas'}.
-            Guarde como regra de {nomeMes(mes)} para comparar com o consumo real.
-          </span>
-          {confJaGuardada ? (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-400"><CheckCircle2 className="w-4 h-4" /> Guardada em {nomeMes(mes)}</span>
-          ) : (
-            <button onClick={guardarConferencia} className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-sm text-white hover:bg-white/15 transition-colors">
-              Guardar em {nomeMes(mes)}
+      {/* Planilha do mês */}
+      <div className="glass rounded-2xl p-6">
+        <h4 className="text-base font-semibold text-white mb-1">Planilha de {nomeMes(mes)}</h4>
+        <p className="text-xs text-gray-500 mb-4">
+          A mesma planilha da conferência (itens_month ou presencial). Ela dá a regra e as sacolas usadas de cada loja.
+          Pode arrastar o arquivo para cima do quadro.
+        </p>
+        <EnvioPlanilha
+          titulo="Planilha de itens"
+          ajuda="itens_month ou presencial"
+          arquivo={arquivoItens}
+          onArquivo={enviarItens}
+          ocupado={ocupado === 'itens'}
+        />
+        {conferencia?.analise?.length > 0 && !confNoMes && (
+          <div className="flex flex-wrap items-center gap-3 mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+            <ClipboardCheck className="w-4 h-4 text-gold-400 shrink-0" />
+            <span className="text-sm text-gray-300 flex-1 min-w-[200px]">
+              Há uma planilha aberta na Conferência{conferencia.fileName ? ` (${conferencia.fileName})` : ''}, com as usadas como estão nos cards.
+            </span>
+            <button
+              onClick={usarConferencia}
+              disabled={ocupado === 'conferencia'}
+              className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-sm text-white hover:bg-white/15 transition-colors disabled:opacity-60"
+            >
+              Usar em {nomeMes(mes)}
             </button>
-          )}
+          </div>
+        )}
+
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <p className="text-xs text-gray-500 mb-2">
+            <b className="text-gray-400">Opcional:</b> para a meta descontar as sacolas que as lojas já têm, suba também a consulta de estoque.
+          </p>
+          <EnvioPlanilha
+            titulo="Consulta de estoque (opcional)"
+            ajuda="CONSULTA_DE_ESTOQUE — estoque de sacolas PP/P/M/G"
+            arquivo={arquivoEstoque}
+            onArquivo={enviarEstoque}
+            ocupado={ocupado === 'estoque'}
+          />
+        </div>
+      </div>
+
+      <TabelaMeta lojas={lojas} idx={idx} mes={mes} margem={margem} setMargem={setMargem} temEstoque={!!arquivoEstoque} />
+
+      {lojas.length > 0 && (
+        <div>
+          <h4 className="text-base font-semibold text-white mb-3">Por loja em {nomeMes(mes)}</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {lojas.map((loja) => (
+              <CartaoLoja key={loja} loja={loja} mes={mes} reg={registroDe(idx, mes, loja)} onExcluir={() => excluir(loja)} />
+            ))}
+          </div>
         </div>
       )}
 
-      <TabelaMeta lojas={lojas} idx={idx} mes={mes} margem={margem} setMargem={setMargem} />
-
-      {/* Lançamentos do mês */}
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <h4 className="text-base font-semibold text-white">Lançamentos de {nomeMes(mes)}</h4>
-          {lojasParaAdicionar.length > 0 && (
-            <label className="flex items-center gap-2 text-sm text-gray-400">
-              <Plus className="w-4 h-4" />
-              <select
-                value=""
-                onChange={(e) => e.target.value && setLojasExtras((p) => [...p, e.target.value])}
-                className="px-2.5 py-1.5 text-sm text-white bg-[#0f1a14] border border-white/10 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500/50"
-              >
-                <option value="">Adicionar loja…</option>
-                {lojasParaAdicionar.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-        {lojas.length === 0 ? (
-          <div className="glass rounded-2xl p-6 text-sm text-gray-400">
-            Nenhuma loja no histórico ainda. Use <b className="text-gray-200">Adicionar loja</b> para começar. Depois do primeiro mês, as lojas aparecem sozinhas nos meses seguintes.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {calcs.map(({ loja, calc }) => (
-              <CartaoLoja
-                key={loja}
-                loja={loja}
-                mes={mes}
-                calc={calc}
-                valores={rascunhos[chave(mes, loja)] || rascunhoDe(porChave.get(chave(mes, loja)))}
-                onSet={(campo, k, v) => setCampo(loja, campo, k, v)}
-                onExcluir={() => excluir(loja)}
-                podeExcluir={porChave.has(chave(mes, loja))}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
       <TabelaHistorico meses={meses} lojas={lojas} idx={idx} mesSel={mes} onSelecionar={setMes} />
 
-      {/* Barra de salvar / avisos */}
-      {(sujos.length > 0 || aviso) && (
+      {aviso && (
         <div className="fixed bottom-4 inset-x-4 z-50 flex justify-center pointer-events-none">
-          <div className="pointer-events-auto flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl glass-dark shadow-glass max-w-full">
-            {aviso && (
-              <span className={`flex items-center gap-1.5 text-sm ${aviso.tipo === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
-                {aviso.tipo === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />} {aviso.texto}
-              </span>
-            )}
-            {sujos.length > 0 && (
-              <>
-                <span className="text-sm text-gray-300">
-                  {sujos.length} {sujos.length === 1 ? 'lançamento' : 'lançamentos'} sem salvar
-                </span>
-                <button onClick={() => setRascunhos({})} className="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white">Descartar</button>
-                <button
-                  onClick={salvar}
-                  disabled={salvando}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 disabled:opacity-60"
-                >
-                  <Save className="w-4 h-4" /> {salvando ? 'Salvando…' : 'Salvar'}
-                </button>
-              </>
-            )}
+          <div className={`pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-xl glass-dark shadow-glass text-sm max-w-full ${aviso.tipo === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
+            {aviso.tipo === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />} {aviso.texto}
           </div>
         </div>
       )}

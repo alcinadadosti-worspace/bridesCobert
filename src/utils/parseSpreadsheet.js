@@ -663,6 +663,16 @@ export function classificaSacolaItem(descricao) {
   return 'regular'
 }
 
+// Sacolas institucionais (as que a loja compra): tamanho pelo SKU conhecido ou pela descrição
+// "SACOLA PP|P|M|G ... INST". Sacolas sazonais (Mães, Natal…), kits de sacola e adesivos ficam de fora.
+const SKU_SACOLA = { 90819: 'pp', 90821: 'p', 90822: 'm', 90823: 'g' }
+export function tamanhoSacola(sku, descricao) {
+  const porSku = SKU_SACOLA[parseNumber(sku)]
+  if (porSku) return porSku
+  const m = normalizeString(descricao).match(/\bsacola (pp|p|m|g)\b.*\binst\b/)
+  return m ? m[1] : null
+}
+
 // Lê uma aba nos dois formatos aceitos:
 //  - itens_month: Unidade, SKU, Descrição, Qtd
 //  - presencial:  Canal de distribuição (13706/13707 -> loja), Código Produto, Produto, Qtde
@@ -727,13 +737,74 @@ export function parseSacolasFile(file) {
 
 // Agrega por unidade e calcula as sacolas necessárias:
 //   necessárias = floor(itens regulares / 3) + itens especiais (1 cada). Suporte fica de fora.
+// usadas = sacolas institucionais que saíram nos pedidos, por tamanho (null se a planilha
+// não traz linhas de sacola para a loja, ex.: presencial)
 export function analisaSacolas(rows) {
   const byU = {}
   for (const it of rows) {
-    if (!byU[it.unidade]) byU[it.unidade] = { unidade: it.unidade, regular: 0, especial: 0, suporte: 0 }
-    byU[it.unidade][it.tipo] += it.qtd
+    if (!byU[it.unidade]) byU[it.unidade] = { unidade: it.unidade, regular: 0, especial: 0, suporte: 0, usadas: null }
+    const u = byU[it.unidade]
+    u[it.tipo] += it.qtd
+    const t = tamanhoSacola(it.sku, it.descricao)
+    if (t) {
+      u.usadas = u.usadas || { pp: 0, p: 0, m: 0, g: 0 }
+      u.usadas[t] += it.qtd
+    }
   }
   return Object.values(byU)
     .map(u => ({ ...u, necessarias: Math.floor(u.regular / 3) + u.especial }))
     .sort((a, b) => a.unidade.localeCompare(b.unidade))
+}
+
+// Estoque de sacolas institucionais por loja e tamanho, a partir da consulta de estoque
+// (SKU, DESCRICAO, PDV, ESTOQUE ATUAL, ESTOQUE EM TRANSITO). Trânsito conta como estoque,
+// igual à Ruptura. Retorna { loja: { pp, p, m, g } }.
+function processEstoqueSacolasSheet(jsonData, out) {
+  if (jsonData.length < 2) return false
+  const H = jsonData[0].map(h => normalizeString(h))
+  const iSku = H.indexOf('sku')
+  const iDesc = H.indexOf('descricao')
+  const iPdv = H.indexOf('pdv')
+  const iEst = H.indexOf('estoque atual')
+  const iTr = H.indexOf('estoque em transito')
+  if (iSku === -1 || iDesc === -1 || iPdv === -1 || iEst === -1) return false
+  for (let r = 1; r < jsonData.length; r++) {
+    const row = jsonData[r]
+    const t = row && tamanhoSacola(row[iSku], row[iDesc])
+    if (!t) continue
+    const loja = getStoreName(parseNumber(row[iPdv]))
+    if (!out[loja]) out[loja] = { pp: 0, p: 0, m: 0, g: 0 }
+    out[loja][t] += parseNumber(row[iEst]) + (iTr === -1 ? 0 : parseNumber(row[iTr]))
+  }
+  return true
+}
+
+export function parseEstoqueSacolasFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' })
+        const out = {}
+        let reconhecida = false
+        for (const name of workbook.SheetNames) {
+          const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '' })
+          if (processEstoqueSacolasSheet(jsonData, out)) reconhecida = true
+        }
+        if (!reconhecida) {
+          reject(new Error('Não parece uma consulta de estoque. Use a planilha com SKU, DESCRICAO, PDV e ESTOQUE ATUAL.'))
+          return
+        }
+        if (Object.keys(out).length === 0) {
+          reject(new Error('A consulta de estoque não tem as sacolas institucionais (SKUs 90819, 90821, 90822, 90823).'))
+          return
+        }
+        resolve(out)
+      } catch (error) {
+        reject(new Error('Erro ao processar planilha: ' + error.message))
+      }
+    }
+    reader.onerror = () => reject(new Error('Erro ao ler o arquivo'))
+    reader.readAsArrayBuffer(file)
+  })
 }
